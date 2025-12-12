@@ -1,0 +1,27 @@
+# ========================
+# 根目录 .gitignore
+# ========================
+
+# --- IDE & 系统文件 ---
+.idea/
+.vscode/
+*.DS_Store
+Thumbs.db
+
+# --- 后端 (Python) ---
+restaurant-backend/__pycache__/
+restaurant-backend/*.py[cod]
+# 忽略整个虚拟环境文件夹
+restaurant-backend/.venv/
+restaurant-backend/venv/
+restaurant-backend/env/
+# 忽略本地环境变量 (包含密钥)
+restaurant-backend/.env
+
+# --- 前端 (React) ---
+restaurant-frontend/node_modules/
+restaurant-frontend/dist/
+restaurant-frontend/build/
+restaurant-frontend/.env.local
+restaurant-frontend/npm-debug.log*
+restaurant-frontend/yarn-error.log*
