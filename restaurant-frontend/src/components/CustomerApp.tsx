@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../services/api';
 import type { Survey, Lottery, Prize, Merchant } from '../types';
 import { Gift, CheckCircle, Store, Play, FileText } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface CustomerAppProps {
     onBack: () => void;
@@ -13,6 +14,7 @@ const generateUUID = () => crypto.randomUUID();
 const WHEEL_COLORS = ['#EEF2FF', '#E0E7FF', '#C7D2FE', '#A5B4FC', '#818CF8', '#6366F1'];
 
 export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMerchantId, preselectedSurveyId }) => {
+    const { t } = useLanguage();
     // New Step: SURVEY_SELECT for when there are multiple surveys
     const [step, setStep] = useState<'MERCHANT_SELECT' | 'SURVEY_SELECT' | 'SURVEY' | 'LOTTERY' | 'RESULT'>('MERCHANT_SELECT');
 
@@ -30,7 +32,6 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
     // Lottery State
     const [linkedLottery, setLinkedLottery] = useState<Lottery | null>(null);
     const [wonPrize, setWonPrize] = useState<Prize | null>(null);
-    const [resultMessage, setResultMessage] = useState('');
     const [isSpinning, setIsSpinning] = useState(false);
     const [rotation, setRotation] = useState(0);
 
@@ -131,7 +132,6 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
             const result = await db.saveResponse(responsePayload);
 
             setWonPrize(result.prize);
-            setResultMessage(result.message);
 
             if (activeSurvey.lottery_id) {
                 const lotteries = await db.getLotteries(selectedMerchant.id);
@@ -174,22 +174,22 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
         }, 3500);
     };
 
-    if (loading) return <div className="flex h-screen items-center justify-center text-indigo-600 font-bold">Loading...</div>;
+    if (loading) return <div className="flex h-screen items-center justify-center text-indigo-600 font-bold">{t.common.loading}</div>;
 
     // --- Step 0: Select Restaurant ---
     if (step === 'MERCHANT_SELECT') {
         return (
             <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6">
                 <div className="max-w-md mx-auto">
-                    <button onClick={onBack} className="mb-6 text-gray-500 hover:text-gray-800 font-medium flex items-center gap-1">← Back</button>
+                    <button onClick={onBack} className="mb-6 text-gray-500 hover:text-gray-800 font-medium flex items-center gap-1">← {t.common.back}</button>
                     <div className="text-center mb-8">
                         <Store className="w-16 h-16 text-indigo-600 mx-auto mb-4"/>
-                        <h2 className="text-3xl font-extrabold text-gray-900">Select Restaurant</h2>
-                        <p className="text-gray-500 mt-2">Where are you dining today?</p>
+                        <h2 className="text-3xl font-extrabold text-gray-900">{t.customer.selectRestaurant}</h2>
+                        <p className="text-gray-500 mt-2">{t.customer.whereDining}</p>
                     </div>
 
                     <div className="space-y-4">
-                        {merchants.length === 0 && <div className="text-center text-gray-400">No restaurants found.</div>}
+                        {merchants.length === 0 && <div className="text-center text-gray-400">{t.customer.noRestaurants}</div>}
                         {merchants.map(m => (
                             <div
                                 key={m.id}
@@ -225,11 +225,11 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
         return (
             <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6">
                 <div className="max-w-md mx-auto">
-                    <button onClick={() => setStep('MERCHANT_SELECT')} className="mb-6 text-gray-500 hover:text-gray-800 font-medium flex items-center gap-1">← Choose different restaurant</button>
+                    <button onClick={() => setStep('MERCHANT_SELECT')} className="mb-6 text-gray-500 hover:text-gray-800 font-medium flex items-center gap-1">← {t.customer.chooseDifferent}</button>
                     <div className="text-center mb-8">
                         <FileText className="w-16 h-16 text-indigo-600 mx-auto mb-4"/>
-                        <h2 className="text-3xl font-extrabold text-gray-900">Select Survey</h2>
-                        <p className="text-gray-500 mt-2">{selectedMerchant?.restaurant_name} has multiple surveys available.</p>
+                        <h2 className="text-3xl font-extrabold text-gray-900">{t.customer.selectSurvey}</h2>
+                        <p className="text-gray-500 mt-2">{selectedMerchant?.restaurant_name} {t.customer.multipleSurveys}</p>
                     </div>
 
                     <div className="space-y-4">
@@ -240,7 +240,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
                                 onClick={() => handleSurveySelect(s)}
                             >
                                 <h3 className="font-bold text-xl text-gray-800 group-hover:text-indigo-600 mb-1">{s.name}</h3>
-                                <p className="text-gray-500 text-sm">{s.questions.length} Questions</p>
+                                <p className="text-gray-500 text-sm">{s.questions.length} {t.customer.questionsCount}</p>
                             </div>
                         ))}
                     </div>
@@ -259,7 +259,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
             <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6">
                 <div className="max-w-2xl mx-auto">
                     <div className="bg-white rounded-2xl shadow-sm p-8 mb-6 border border-gray-100">
-                        <button onClick={() => setStep('MERCHANT_SELECT')} className="text-sm text-gray-400 hover:text-gray-600 mb-4">← Back to start</button>
+                        <button onClick={() => setStep('MERCHANT_SELECT')} className="text-sm text-gray-400 hover:text-gray-600 mb-4">← {t.customer.backStart}</button>
                         <h2 className="text-3xl font-extrabold text-gray-900 mb-2">{activeSurvey.name}</h2>
                         <p className="text-gray-500">at {selectedMerchant?.restaurant_name}</p>
                     </div>
@@ -273,7 +273,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
                                     <textarea
                                         rows={4}
                                         className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none resize-none bg-gray-50 focus:bg-white"
-                                        placeholder="Type your answer here..."
+                                        placeholder={t.customer.typeAnswer}
                                         value={answers[q.id] || ''}
                                         onChange={(e) => handleTextChange(q.id, e.target.value)}
                                     />
@@ -313,7 +313,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
                                                 )}
                                                 <input
                                                     type="text"
-                                                    placeholder="Other (please specify)..."
+                                                    placeholder={t.customer.otherSpecify}
                                                     className="flex-1 bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
                                                     value={(!q.options.includes(answers[q.id])) ? answers[q.id] || '' : ''}
                                                     onChange={(e) => handleTextChange(q.id, e.target.value)}
@@ -340,7 +340,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
                                 allAnswered ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-300 cursor-not-allowed'
                             }`}
                         >
-                            {allAnswered ? 'Submit & Next' : 'Please answer all questions'}
+                            {allAnswered ? t.customer.submitNext : t.customer.pleaseAnswer}
                         </button>
                     </div>
                 </div>
@@ -393,7 +393,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
                     </div>
                 </div>
                 <button onClick={spinWheel} disabled={isSpinning} className={`mt-12 py-4 px-12 rounded-full font-bold text-xl shadow-xl transition-all transform ${isSpinning ? 'bg-gray-500 cursor-default' : 'bg-yellow-400 hover:scale-105'}`}>
-                    {isSpinning ? 'GOOD LUCK...' : 'SPIN NOW'}
+                    {isSpinning ? t.customer.goodLuck : t.customer.spinNow}
                 </button>
             </div>
         );
@@ -406,9 +406,9 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
                 <div className="flex justify-center mb-6">
                     {wonPrize ? <Gift className="w-20 h-20 text-yellow-500" /> : <CheckCircle className="w-20 h-20 text-gray-300" />}
                 </div>
-                <h2 className="text-3xl font-extrabold text-gray-900 mb-2">{wonPrize ? 'Congratulations!' : 'Thank You!'}</h2>
-                <p className="text-xl text-indigo-600 font-bold mb-8">{resultMessage}</p>
-                <button onClick={onBack} className="w-full py-3 bg-gray-900 text-white rounded-xl font-semibold">Back to Home</button>
+                <h2 className="text-3xl font-extrabold text-gray-900 mb-2">{wonPrize ? t.customer.congrats : t.customer.thankYou}</h2>
+                <p className="text-xl text-indigo-600 font-bold mb-8">{wonPrize ? `${t.customer.wonMsg} ${wonPrize.name}` : t.customer.noWinMsg}</p>
+                <button onClick={onBack} className="w-full py-3 bg-gray-900 text-white rounded-xl font-semibold">{t.customer.backHome}</button>
             </div>
         </div>
     );

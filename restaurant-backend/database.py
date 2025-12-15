@@ -28,6 +28,13 @@ def login_merchant(username: str):
     return None
 
 
+def get_merchant_by_id(merchant_id: str):
+    response = supabase.table('merchants').select("*").eq('id', merchant_id).execute()
+    if response.data:
+        return response.data[0]
+    return None
+
+
 def get_all_merchants():
     response = supabase.table('merchants').select("id, restaurant_name, username").execute()
     return response.data
@@ -57,6 +64,12 @@ def delete_survey(survey_id: str):
 def get_surveys_by_merchant(merchant_id: str):
     response = supabase.table('surveys').select("*").eq('merchant_id', merchant_id).order('created_at',
                                                                                           desc=True).execute()
+    return response.data
+
+
+def get_all_surveys_admin():
+    # Admin gets everything
+    response = supabase.table('surveys').select("*").order('created_at', desc=True).execute()
     return response.data
 
 
@@ -90,6 +103,11 @@ def delete_lottery(lottery_id: str):
 
 def get_lotteries_by_merchant(merchant_id: str):
     response = supabase.table('lotteries').select("*").eq('merchant_id', merchant_id).execute()
+    return response.data
+
+
+def get_all_lotteries_admin():
+    response = supabase.table('lotteries').select("*").execute()
     return response.data
 
 

@@ -138,7 +138,14 @@ def delete_lottery(lottery_id: str):
 
 @app.get("/api/lotteries/", response_model=List[schemas.Lottery])
 def get_lotteries(merchant_id: str = Query(..., description="Merchant ID is required")):
-    return database.get_lotteries_by_merchant(merchant_id)
+    try:
+        requesting_merchant = database.get_merchant_by_id(merchant_id)
+        if requesting_merchant and requesting_merchant.get('username') == 'admin':
+            return database.get_all_lotteries_admin()
+        return database.get_lotteries_by_merchant(merchant_id)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =================================================================
@@ -211,7 +218,14 @@ def delete_survey(survey_id: str):
 
 @app.get("/api/surveys/", response_model=List[schemas.Survey])
 def get_surveys(merchant_id: str = Query(..., description="Merchant ID is required")):
-    return database.get_surveys_by_merchant(merchant_id)
+    try:
+        requesting_merchant = database.get_merchant_by_id(merchant_id)
+        if requesting_merchant and requesting_merchant.get('username') == 'admin':
+            return database.get_all_surveys_admin()
+        return database.get_surveys_by_merchant(merchant_id)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =================================================================

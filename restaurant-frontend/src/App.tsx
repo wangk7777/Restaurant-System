@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { ViewState, type Merchant } from './types';
 import { CustomerApp } from './components/CustomerApp';
 import { MerchantDashboard } from './components/MerchantDashboard';
-import { UtensilsCrossed, Store, User } from 'lucide-react';
+import { UtensilsCrossed, Store, User, Globe } from 'lucide-react';
 import { db } from './services/api';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+    const { t, language, setLanguage } = useLanguage();
     const [currentView, setCurrentView] = useState<ViewState>(ViewState.HOME);
 
     // Merchant Auth State
@@ -37,6 +39,10 @@ const App: React.FC = () => {
         }
     }, []);
 
+    const toggleLanguage = () => {
+        setLanguage(language === 'en' ? 'zh' : 'en');
+    };
+
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setAuthError('');
@@ -55,7 +61,7 @@ const App: React.FC = () => {
             // Clear forms
             setUsername(''); setPassword(''); setRestaurantName('');
         } catch (err: any) {
-            setAuthError(err.message || "Authentication failed");
+            setAuthError(err.message || t.common.error);
         }
     };
 
@@ -81,9 +87,9 @@ const App: React.FC = () => {
                 if (!loggedInMerchant) {
                     return (
                         <div className="min-h-screen flex items-center justify-center flex-col gap-4 bg-gray-50">
-                            <div className="text-red-500 font-semibold">Session expired or invalid.</div>
+                            <div className="text-red-500 font-semibold">{t.auth.sessionExpired}</div>
                             <button onClick={() => setCurrentView(ViewState.MERCHANT_LOGIN)} className="text-indigo-600 underline hover:text-indigo-800">
-                                Return to Login
+                                {t.auth.returnLogin}
                             </button>
                         </div>
                     );
@@ -99,40 +105,40 @@ const App: React.FC = () => {
                         <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
                             <div className="text-center mb-6">
                                 <Store className="w-12 h-12 text-indigo-600 mx-auto mb-2" />
-                                <h2 className="text-2xl font-bold text-gray-900">{isRegistering ? 'Register Restaurant' : 'Merchant Login'}</h2>
-                                <p className="text-gray-500 text-sm mt-2">Manage surveys & lotteries</p>
+                                <h2 className="text-2xl font-bold text-gray-900">{isRegistering ? t.auth.registerTitle : t.auth.loginTitle}</h2>
+                                <p className="text-gray-500 text-sm mt-2">{t.auth.subTitle}</p>
                             </div>
 
                             <form onSubmit={handleAuth} className="space-y-4">
                                 {isRegistering && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Restaurant Name</label>
+                                        <label className="block text-sm font-medium text-gray-700">{t.auth.restaurantName}</label>
                                         <input type="text" className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500" value={restaurantName} onChange={e => setRestaurantName(e.target.value)} required />
                                     </div>
                                 )}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Username</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t.auth.username}</label>
                                     <input type="text" className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500" value={username} onChange={e => setUsername(e.target.value)} required />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Password</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t.auth.password}</label>
                                     <input type="password" className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500" value={password} onChange={e => setPassword(e.target.value)} required />
                                 </div>
 
                                 {authError && <p className="text-red-500 text-sm bg-red-50 p-2 rounded">{authError}</p>}
 
                                 <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-semibold transition-colors">
-                                    {isRegistering ? 'Create Account' : 'Sign In'}
+                                    {isRegistering ? t.auth.registerBtn : t.auth.loginBtn}
                                 </button>
                             </form>
 
                             <div className="mt-6 text-center space-y-4">
                                 <button onClick={() => { setIsRegistering(!isRegistering); setAuthError(''); }} className="text-indigo-600 hover:underline text-sm font-medium">
-                                    {isRegistering ? 'Already have an account? Login' : 'New here? Register Restaurant'}
+                                    {isRegistering ? t.auth.toLogin : t.auth.toRegister}
                                 </button>
 
                                 <button onClick={() => setCurrentView(ViewState.HOME)} className="w-full text-gray-400 text-sm hover:text-gray-600 block">
-                                    ← Back to Home
+                                    ← {t.auth.backHome}
                                 </button>
                             </div>
                         </div>
@@ -142,22 +148,22 @@ const App: React.FC = () => {
             case ViewState.HOME:
             default:
                 return (
-                    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-6">
+                    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-6 relative">
                         <div className="max-w-4xl w-full grid md:grid-cols-2 gap-8">
                             {/* Customer Card */}
                             <div onClick={() => setCurrentView(ViewState.CUSTOMER_MERCHANT_LIST)} className="bg-white p-10 rounded-2xl shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:-translate-y-1 flex flex-col items-center text-center group">
                                 <div className="bg-indigo-100 p-6 rounded-full mb-6 group-hover:bg-indigo-200 transition-colors"><UtensilsCrossed className="w-16 h-16 text-indigo-600" /></div>
-                                <h2 className="text-3xl font-bold text-gray-800 mb-4">I'm a Customer</h2>
-                                <p className="text-gray-600 text-lg">Dined with us? Find your restaurant, take a survey, and <span className="text-indigo-600 font-bold">WIN</span> prizes!</p>
-                                <button className="mt-8 px-8 py-3 bg-indigo-600 text-white rounded-full font-semibold group-hover:bg-indigo-700 transition-colors">Start Survey</button>
+                                <h2 className="text-3xl font-bold text-gray-800 mb-4">{t.home.customerTitle}</h2>
+                                <p className="text-gray-600 text-lg">{t.home.customerDesc}</p>
+                                <button className="mt-8 px-8 py-3 bg-indigo-600 text-white rounded-full font-semibold group-hover:bg-indigo-700 transition-colors">{t.home.startSurvey}</button>
                             </div>
 
                             {/* Merchant Card */}
                             <div onClick={() => setCurrentView(ViewState.MERCHANT_LOGIN)} className="bg-slate-900 p-10 rounded-2xl shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:-translate-y-1 flex flex-col items-center text-center group">
                                 <div className="bg-slate-700 p-6 rounded-full mb-6 group-hover:bg-slate-600 transition-colors"><User className="w-16 h-16 text-white" /></div>
-                                <h2 className="text-3xl font-bold text-white mb-4">I'm a Merchant</h2>
-                                <p className="text-slate-300 text-lg">Log in to manage your restaurant's surveys, lotteries, and view customer insights.</p>
-                                <button className="mt-8 px-8 py-3 bg-white text-slate-900 rounded-full font-semibold group-hover:bg-gray-100 transition-colors">Merchant Access</button>
+                                <h2 className="text-3xl font-bold text-white mb-4">{t.home.merchantTitle}</h2>
+                                <p className="text-slate-300 text-lg">{t.home.merchantDesc}</p>
+                                <button className="mt-8 px-8 py-3 bg-white text-slate-900 rounded-full font-semibold group-hover:bg-gray-100 transition-colors">{t.home.merchantAccess}</button>
                             </div>
                         </div>
                     </div>
@@ -165,7 +171,29 @@ const App: React.FC = () => {
         }
     };
 
-    return <>{renderContent()}</>;
+    return (
+        <>
+            {/* Global Language Toggle - Fixed to Top Right */}
+            <div className="fixed top-4 right-4 z-50">
+                <button
+                    onClick={toggleLanguage}
+                    className="flex items-center gap-2 bg-white/90 backdrop-blur shadow-md border border-gray-200 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-gray-50 text-indigo-700 transition-all"
+                >
+                    <Globe size={16} />
+                    {language === 'en' ? 'English' : '中文'}
+                </button>
+            </div>
+            {renderContent()}
+        </>
+    );
+};
+
+const App: React.FC = () => {
+    return (
+        <LanguageProvider>
+            <AppContent />
+        </LanguageProvider>
+    );
 };
 
 export default App;
