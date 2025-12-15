@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/api';
-import type { Survey, Lottery, SurveyResponse, UUID, Merchant } from '../types';
+import type { Survey, Lottery, Question, SurveyResponse, UUID, Merchant } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Plus, Trash2, BarChart2, Settings, FileText, Gift, LogOut, AlertTriangle, X, QrCode, Download, Copy, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, BarChart2, Settings, FileText, Gift, LogOut, AlertTriangle, X, QrCode, Download, Copy, ExternalLink, MessageSquare, List as ListIcon } from 'lucide-react';
 
 interface MerchantDashboardProps {
     merchant: Merchant;
@@ -84,9 +84,32 @@ export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ merchant, 
     };
 
     // Question & Option Handlers
-    const addQuestion = () => setEditingSurvey({ ...editingSurvey, questions: [...(editingSurvey?.questions || []), { id: generateUUID(), text: '', options: ['Option A', 'Option B'] }] });
+    const addQuestion = () => setEditingSurvey({
+        ...editingSurvey,
+        questions: [...(editingSurvey?.questions || []), { id: generateUUID(), text: '', type: 'choice', allow_other: false, options: ['Option A', 'Option B'] }]
+    });
+
     const removeQuestion = (idx: number) => { if (!editingSurvey?.questions) return; const qs = [...editingSurvey.questions]; qs.splice(idx, 1); setEditingSurvey({ ...editingSurvey, questions: qs }); };
-    const updateQuestion = (idx: number, field: string, val: string) => { if (!editingSurvey?.questions) return; const qs = [...editingSurvey.questions]; (qs[idx] as any)[field] = val; setEditingSurvey({ ...editingSurvey, questions: qs }); };
+
+    // Generic update for top-level question fields (text, type, allow_other)
+    const updateQuestion = (idx: number, field: keyof Question, val: any) => {
+        if (!editingSurvey?.questions) return;
+        const qs = [...editingSurvey.questions];
+        (qs[idx] as any)[field] = val;
+
+        // Reset options if switching to text
+        if (field === 'type' && val === 'text') {
+            qs[idx].options = [];
+            qs[idx].allow_other = false;
+        }
+        // Add default options if switching to choice and empty
+        if (field === 'type' && val === 'choice' && qs[idx].options.length === 0) {
+            qs[idx].options = ['Option A', 'Option B'];
+        }
+
+        setEditingSurvey({ ...editingSurvey, questions: qs });
+    };
+
     const updateOption = (qIdx: number, oIdx: number, val: string) => { if (!editingSurvey?.questions) return; const qs = [...editingSurvey.questions]; qs[qIdx].options[oIdx] = val; setEditingSurvey({ ...editingSurvey, questions: qs }); };
     const addOption = (qIdx: number) => { if (!editingSurvey?.questions) return; const qs = [...editingSurvey.questions]; qs[qIdx].options.push('New Option'); setEditingSurvey({ ...editingSurvey, questions: qs }); };
     const removeOption = (qIdx: number, oIdx: number) => { if (!editingSurvey?.questions) return; const qs = [...editingSurvey.questions]; qs[qIdx].options.splice(oIdx, 1); setEditingSurvey({ ...editingSurvey, questions: qs }); };
@@ -194,16 +217,65 @@ export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ merchant, 
                                         {editingSurvey.questions?.map((q, i) => (
                                             <div key={q.id} className="mb-4 border p-4 rounded bg-gray-50 relative">
                                                 <button onClick={() => removeQuestion(i)} className="absolute top-2 right-2 text-red-400"><X size={20} /></button>
-                                                <input className="border p-1 w-full mb-2 rounded font-medium" value={q.text} onChange={e => updateQuestion(i, 'text', e.target.value)} placeholder="Question Text"/>
-                                                <div className="pl-4 space-y-2">
-                                                    {q.options.map((opt, oIdx) => (
-                                                        <div key={oIdx} className="flex gap-2"><input className="border p-1 w-full text-sm" value={opt} onChange={e => updateOption(i, oIdx, e.target.value)} /><button onClick={() => removeOption(i, oIdx)}><X size={14}/></button></div>
-                                                    ))}
-                                                    <button onClick={() => addOption(i)} className="text-xs text-indigo-600">+ Add Option</button>
+
+                                                {/* Question Text */}
+                                                <div className="mb-3">
+                                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Question</label>
+                                                    <input className="border p-2 w-full rounded font-medium" value={q.text} onChange={e => updateQuestion(i, 'text', e.target.value)} placeholder="e.g. How was your food?"/>
                                                 </div>
+
+                                                {/* Question Type Toggle */}
+                                                <div className="mb-4">
+                                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Answer Type</label>
+                                                    <div className="flex gap-4">
+                                                        <label className={`flex items-center gap-2 cursor-pointer p-2 rounded border ${q.type === 'choice' || !q.type ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500' : 'bg-white border-gray-200'}`}>
+                                                            <input type="radio" className="hidden" name={`qtype-${q.id}`} checked={q.type === 'choice' || !q.type} onChange={() => updateQuestion(i, 'type', 'choice')} />
+                                                            <ListIcon size={16} className={q.type === 'choice' || !q.type ? 'text-indigo-600' : 'text-gray-400'}/>
+                                                            <span className="text-sm">Multiple Choice</span>
+                                                        </label>
+                                                        <label className={`flex items-center gap-2 cursor-pointer p-2 rounded border ${q.type === 'text' ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500' : 'bg-white border-gray-200'}`}>
+                                                            <input type="radio" className="hidden" name={`qtype-${q.id}`} checked={q.type === 'text'} onChange={() => updateQuestion(i, 'type', 'text')} />
+                                                            <MessageSquare size={16} className={q.type === 'text' ? 'text-indigo-600' : 'text-gray-400'}/>
+                                                            <span className="text-sm">Text Input</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                {/* Option Editor (Only for choice) */}
+                                                {(q.type === 'choice' || !q.type) ? (
+                                                    <div className="pl-4 space-y-2 border-l-2 border-indigo-100">
+                                                        <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Options</label>
+
+                                                        {q.options.map((opt, oIdx) => (
+                                                            <div key={oIdx} className="flex gap-2 mb-2"><input className="border p-1 w-full text-sm rounded" value={opt} onChange={e => updateOption(i, oIdx, e.target.value)} /><button onClick={() => removeOption(i, oIdx)}><X size={14}/></button></div>
+                                                        ))}
+
+                                                        {/* Render "Other" as a fake option if enabled */}
+                                                        {q.allow_other && (
+                                                            <div className="flex gap-2 mb-2 items-center">
+                                                                <div className="border border-dashed border-gray-300 p-1.5 w-full text-sm rounded bg-gray-50 text-gray-400 italic flex items-center justify-between">
+                                                                    <span>Other (User types answer...)</span>
+                                                                </div>
+                                                                <button onClick={() => updateQuestion(i, 'allow_other', false)} title="Remove 'Other' option"><X size={14} className="text-red-500"/></button>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="flex gap-3 mt-3">
+                                                            <button onClick={() => addOption(i)} className="text-xs text-indigo-600 font-bold hover:bg-indigo-50 px-2 py-1 rounded border border-indigo-200">+ Add Option</button>
+
+                                                            {!q.allow_other && (
+                                                                <button onClick={() => updateQuestion(i, 'allow_other', true)} className="text-xs text-gray-600 font-bold hover:bg-gray-100 px-2 py-1 rounded border border-gray-300">+ Add "Other" Option</button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="pl-4 py-2 border-l-2 border-gray-100 text-sm text-gray-500 italic bg-gray-50 rounded-r">
+                                                        Customer will see a text box to type their answer freely.
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
-                                        <button onClick={addQuestion} className="text-sm border border-blue-500 text-blue-500 px-3 py-1 rounded">+ Add Question</button>
+                                        <button onClick={addQuestion} className="text-sm border border-blue-500 text-blue-500 px-3 py-1 rounded hover:bg-blue-50">+ Add Question</button>
                                     </div>
                                     <div className="flex justify-end gap-2">
                                         <button onClick={() => setEditingSurvey(null)} className="px-4 py-2 bg-gray-200 rounded">Cancel</button>
@@ -333,11 +405,53 @@ export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ merchant, 
                             <div className="grid lg:grid-cols-2 gap-6">
                                 <div className="col-span-full bg-blue-50 p-4 rounded text-blue-900">Total Responses: <strong>{responses.length}</strong></div>
                                 {surveys.find(s => s.id === selectedAnalyticsSurvey)?.questions.map(q => {
+                                    // Analytics for Text type questions
+                                    if (q.type === 'text') {
+                                        const textAnswers = responses.map(r => r.answers[q.id]).filter(Boolean);
+                                        return (
+                                            <div key={q.id} className="bg-white p-4 rounded border shadow-sm lg:col-span-2">
+                                                <h4 className="font-bold mb-4">{q.text}</h4>
+                                                <div className="max-h-64 overflow-y-auto space-y-2 bg-gray-50 p-2 rounded">
+                                                    {textAnswers.length > 0 ? textAnswers.map((txt, i) => (
+                                                        <div key={i} className="p-2 bg-white border rounded text-sm text-gray-700 italic">"{txt}"</div>
+                                                    )) : <div className="text-gray-400 text-sm">No text responses yet.</div>}
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+
+                                    // Analytics for Choice type questions
+                                    // 1. Calculate Standard Options
                                     const data = q.options.map(opt => ({ name: opt, value: responses.filter(r => r.answers[q.id] === opt).length }));
+
+                                    // 2. Calculate "Other" responses if enabled
+                                    let otherResponses: string[] = [];
+                                    if (q.allow_other) {
+                                        otherResponses = responses
+                                            .map(r => r.answers[q.id])
+                                            .filter(ans => ans && !q.options.includes(ans));
+
+                                        if (otherResponses.length > 0) {
+                                            data.push({ name: 'Other', value: otherResponses.length });
+                                        }
+                                    }
+
                                     return (
                                         <div key={q.id} className="bg-white p-4 rounded border shadow-sm">
                                             <h4 className="font-bold mb-4">{q.text}</h4>
                                             <div className="h-64"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data} cx="50%" cy="50%" outerRadius={80} fill="#8884d8" dataKey="value" label={({name, value}) => `${name}: ${value}`}>{data.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><Tooltip /><Legend /></PieChart></ResponsiveContainer></div>
+
+                                            {/* Show Other List if exists */}
+                                            {otherResponses.length > 0 && (
+                                                <div className="mt-4 pt-4 border-t">
+                                                    <h5 className="text-xs font-bold text-gray-500 uppercase mb-2">Other Responses</h5>
+                                                    <div className="max-h-32 overflow-y-auto space-y-1">
+                                                        {otherResponses.map((txt, i) => (
+                                                            <div key={i} className="text-xs bg-gray-50 p-1.5 rounded text-gray-700">{txt}</div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}

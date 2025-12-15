@@ -107,6 +107,10 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
         setAnswers(prev => ({ ...prev, [questionId]: option }));
     };
 
+    const handleTextChange = (questionId: string, text: string) => {
+        setAnswers(prev => ({ ...prev, [questionId]: text }));
+    };
+
     const handleSurveySelect = (survey: Survey) => {
         setActiveSurvey(survey);
         setStep('SURVEY');
@@ -264,24 +268,66 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
                         {activeSurvey.questions.map((q, idx) => (
                             <div key={q.id} className="bg-white rounded-2xl shadow-sm p-6 sm:p-8 border border-gray-100">
                                 <h3 className="text-lg font-semibold text-gray-800 mb-4">{idx + 1}. {q.text}</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {q.options.map((opt) => (
-                                        <button
-                                            key={opt}
-                                            onClick={() => handleOptionSelect(q.id, opt)}
-                                            className={`p-4 rounded-xl text-left border-2 transition-all ${
-                                                answers[q.id] === opt
-                                                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                                                    : 'border-transparent bg-gray-50 hover:bg-gray-100'
-                                            }`}
-                                        >
-                                            <div className="flex justify-between">
-                                                <span>{opt}</span>
-                                                {answers[q.id] === opt && <CheckCircle className="w-5 h-5" />}
+
+                                {q.type === 'text' ? (
+                                    <textarea
+                                        rows={4}
+                                        className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none resize-none bg-gray-50 focus:bg-white"
+                                        placeholder="Type your answer here..."
+                                        value={answers[q.id] || ''}
+                                        onChange={(e) => handleTextChange(q.id, e.target.value)}
+                                    />
+                                ) : (
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {q.options.map((opt) => (
+                                                <button
+                                                    key={opt}
+                                                    onClick={() => handleOptionSelect(q.id, opt)}
+                                                    className={`p-4 rounded-xl text-left border-2 transition-all ${
+                                                        answers[q.id] === opt
+                                                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                                                            : 'border-transparent bg-gray-50 hover:bg-gray-100'
+                                                    }`}
+                                                >
+                                                    <div className="flex justify-between">
+                                                        <span>{opt}</span>
+                                                        {answers[q.id] === opt && <CheckCircle className="w-5 h-5" />}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {/* "Other" Option Rendering */}
+                                        {q.allow_other && (
+                                            <div
+                                                className={`p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${
+                                                    (answers[q.id] !== undefined && !q.options.includes(answers[q.id]))
+                                                        ? 'border-indigo-600 bg-indigo-50'
+                                                        : 'border-transparent bg-gray-50'
+                                                }`}
+                                            >
+                                                {(answers[q.id] !== undefined && !q.options.includes(answers[q.id])) ? (
+                                                    <CheckCircle className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                                                ) : (
+                                                    <div className="w-5 h-5 rounded-full border-2 border-gray-300 flex-shrink-0" />
+                                                )}
+                                                <input
+                                                    type="text"
+                                                    placeholder="Other (please specify)..."
+                                                    className="flex-1 bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+                                                    value={(!q.options.includes(answers[q.id])) ? answers[q.id] || '' : ''}
+                                                    onChange={(e) => handleTextChange(q.id, e.target.value)}
+                                                    onFocus={() => {
+                                                        // Ensure 'Other' is visibly selected when typing starts, even if empty initially
+                                                        if (answers[q.id] === undefined || q.options.includes(answers[q.id])) {
+                                                            handleTextChange(q.id, '');
+                                                        }
+                                                    }}
+                                                />
                                             </div>
-                                        </button>
-                                    ))}
-                                </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

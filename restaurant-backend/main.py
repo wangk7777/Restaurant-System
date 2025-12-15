@@ -154,6 +154,8 @@ def create_survey(survey: schemas.SurveyCreate):
             questions_data.append({
                 "id": str(uuid.uuid4()),
                 "text": q.text,
+                "type": q.type,
+                "allow_other": q.allow_other,  # Fixed: Include allow_other
                 "options": q.options
             })
 
@@ -180,6 +182,8 @@ def update_survey(survey_id: str, survey: schemas.SurveyCreate):
             questions_data.append({
                 "id": str(uuid.uuid4()),
                 "text": q.text,
+                "type": q.type,
+                "allow_other": q.allow_other,  # Fixed: Include allow_other
                 "options": q.options
             })
 

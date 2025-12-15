@@ -50,7 +50,9 @@ class Lottery(LotteryBase):
 # --- 3. 问卷问题 (Question) ---
 class QuestionBase(BaseModel):
     text: str
-    options: List[str]
+    type: str = "choice" # 'choice' or 'text'
+    allow_other: bool = False # New field for choice questions
+    options: List[str] = []
 
 class QuestionCreate(QuestionBase):
     pass
