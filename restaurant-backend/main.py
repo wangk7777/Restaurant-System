@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 import uuid
@@ -11,13 +11,7 @@ import traceback
 app = FastAPI(title="Restaurant Survey & Lottery API")
 
 # --- CORS ---
-origins = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "*"
-]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,7 +22,6 @@ app.add_middleware(
 )
 
 
-# ... (run_lottery_algorithm 保持不变) ...
 def run_lottery_algorithm(lottery_id: str):
     try:
         lottery = database.get_lottery_by_id(lottery_id)
@@ -47,7 +40,45 @@ def run_lottery_algorithm(lottery_id: str):
 
 
 # =================================================================
-# 🛍️ 抽奖管理 (Lotteries)
+# 👤 认证与商户 (Auth & Merchants)
+# =================================================================
+
+@app.post("/api/auth/register", response_model=schemas.Merchant)
+def register(merchant: schemas.MerchantRegister):
+    try:
+        new_data = {
+            "id": str(uuid.uuid4()),
+            "restaurant_name": merchant.restaurant_name,
+            "username": merchant.username,
+            "password": merchant.password  # 明文存储
+        }
+        return database.register_merchant(new_data)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/auth/login", response_model=schemas.Merchant)
+def login(creds: schemas.MerchantLogin):
+    user = database.login_merchant(creds.username)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    if user['password'] != creds.password:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    return user
+
+
+@app.get("/api/merchants", response_model=List[schemas.Merchant])
+def get_merchants():
+    return database.get_all_merchants()
+
+
+# =================================================================
+# 🛍️ 抽奖管理 (Lotteries) - 需要 merchant_id
 # =================================================================
 
 @app.post("/api/lotteries/", response_model=schemas.Lottery)
@@ -64,6 +95,7 @@ def create_lottery(lottery: schemas.LotteryCreate):
 
         new_lottery_data = {
             "id": new_id,
+            "merchant_id": str(lottery.merchant_id),
             "name": lottery.name,
             "prizes": prizes_data
         }
@@ -76,11 +108,10 @@ def create_lottery(lottery: schemas.LotteryCreate):
 @app.put("/api/lotteries/{lottery_id}", response_model=schemas.Lottery)
 def update_lottery(lottery_id: str, lottery: schemas.LotteryCreate):
     try:
-        # 重新生成奖品ID或保留逻辑太复杂，这里简化为重新生成奖品列表
         prizes_data = []
         for p in lottery.prizes:
             prizes_data.append({
-                "id": str(uuid.uuid4()),  # 每次更新都重新生成奖品ID比较简单
+                "id": str(uuid.uuid4()),
                 "name": p.name,
                 "probability": p.probability
             })
@@ -95,23 +126,28 @@ def update_lottery(lottery_id: str, lottery: schemas.LotteryCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.delete("/api/lotteries/{lottery_id}")
+def delete_lottery(lottery_id: str):
+    try:
+        database.delete_lottery(lottery_id)
+        return {"message": "Lottery deleted successfully"}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/lotteries/", response_model=List[schemas.Lottery])
-def get_lotteries():
-    return database.get_all_lotteries()
+def get_lotteries(merchant_id: str = Query(..., description="Merchant ID is required")):
+    return database.get_lotteries_by_merchant(merchant_id)
 
 
 # =================================================================
-# 📋 问卷管理 (Surveys)
+# 📋 问卷管理 (Surveys) - 需要 merchant_id
 # =================================================================
 
 @app.post("/api/surveys/", response_model=schemas.Survey)
 def create_survey(survey: schemas.SurveyCreate):
     try:
-        # 1. 如果这个新问卷是 active，先把其他的全部 inactive
-        if survey.active:
-            database.reset_all_surveys_inactive()
-
-        # 2. 准备插入
         new_id = str(uuid.uuid4())
         questions_data = []
         for q in survey.questions:
@@ -123,8 +159,8 @@ def create_survey(survey: schemas.SurveyCreate):
 
         new_survey_data = {
             "id": new_id,
+            "merchant_id": str(survey.merchant_id),
             "name": survey.name,
-            "active": survey.active,
             "lottery_id": str(survey.lottery_id) if survey.lottery_id else None,
             "created_at": datetime.now().isoformat(),
             "questions": questions_data
@@ -139,22 +175,16 @@ def create_survey(survey: schemas.SurveyCreate):
 @app.put("/api/surveys/{survey_id}", response_model=schemas.Survey)
 def update_survey(survey_id: str, survey: schemas.SurveyCreate):
     try:
-        # 1. 如果更新为 active，先把其他的 inactive
-        if survey.active:
-            database.reset_all_surveys_inactive()
-
-        # 2. 准备更新数据
         questions_data = []
         for q in survey.questions:
             questions_data.append({
-                "id": str(uuid.uuid4()),  # 每次更新问题ID变了没关系，JSONB全量替换
+                "id": str(uuid.uuid4()),
                 "text": q.text,
                 "options": q.options
             })
 
         update_data = {
             "name": survey.name,
-            "active": survey.active,
             "lottery_id": str(survey.lottery_id) if survey.lottery_id else None,
             "questions": questions_data
         }
@@ -165,17 +195,19 @@ def update_survey(survey_id: str, survey: schemas.SurveyCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.delete("/api/surveys/{survey_id}")
+def delete_survey(survey_id: str):
+    try:
+        database.delete_survey(survey_id)
+        return {"message": "Survey deleted successfully"}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/surveys/", response_model=List[schemas.Survey])
-def get_surveys():
-    return database.get_all_surveys()
-
-
-@app.get("/api/surveys/active", response_model=schemas.Survey)
-def get_active_survey():
-    survey = database.get_active_survey()
-    if not survey:
-        raise HTTPException(status_code=404, detail="No active survey found")
-    return survey
+def get_surveys(merchant_id: str = Query(..., description="Merchant ID is required")):
+    return database.get_surveys_by_merchant(merchant_id)
 
 
 # =================================================================

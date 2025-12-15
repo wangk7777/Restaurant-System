@@ -1,13 +1,41 @@
-import type { Lottery, Survey, SurveyResponse, UUID, LotteryResult } from '../types';
+import type { Lottery, Survey, SurveyResponse, UUID, LotteryResult, Merchant } from '../types';
 
-// ⚠️ IMPORTANT: Matches the port from your Python uvicorn command
-// If your Python is running on 8000, change this to 8000
 const API_BASE_URL = 'http://127.0.0.1:8001/api';
 
 export const db = {
+    // --- Auth ---
+    registerMerchant: async (data: Partial<Merchant> & {password: string}): Promise<Merchant> => {
+        const response = await fetch(`${API_BASE_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || 'Registration failed');
+        }
+        return await response.json();
+    },
+
+    loginMerchant: async (username: string, password: string): Promise<Merchant> => {
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        if (!response.ok) throw new Error('Login failed');
+        return await response.json();
+    },
+
+    getMerchants: async (): Promise<Merchant[]> => {
+        const response = await fetch(`${API_BASE_URL}/merchants`);
+        if (!response.ok) throw new Error('Failed to fetch merchants');
+        return await response.json();
+    },
+
     // --- Lotteries ---
-    getLotteries: async (): Promise<Lottery[]> => {
-        const response = await fetch(`${API_BASE_URL}/lotteries/`);
+    getLotteries: async (merchantId: UUID): Promise<Lottery[]> => {
+        const response = await fetch(`${API_BASE_URL}/lotteries/?merchant_id=${merchantId}`);
         if (!response.ok) throw new Error('Failed to fetch lotteries');
         return await response.json();
     },
@@ -27,14 +55,13 @@ export const db = {
     },
 
     deleteLottery: async (id: UUID) => {
-        console.log("Request to delete lottery:", id);
-        console.warn(`Delete not implemented in backend yet for ID: ${id}`);
-        // await fetch(`${API_BASE_URL}/lotteries/${id}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE_URL}/lotteries/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete lottery');
     },
 
     // --- Surveys ---
-    getSurveys: async (): Promise<Survey[]> => {
-        const response = await fetch(`${API_BASE_URL}/surveys/`);
+    getSurveys: async (merchantId: UUID): Promise<Survey[]> => {
+        const response = await fetch(`${API_BASE_URL}/surveys/?merchant_id=${merchantId}`);
         if (!response.ok) throw new Error('Failed to fetch surveys');
         return await response.json();
     },
@@ -53,15 +80,9 @@ export const db = {
         });
     },
 
-    getActiveSurvey: async (): Promise<Survey | undefined> => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/surveys/active`);
-            if (!response.ok) return undefined;
-            return await response.json();
-        } catch (e) {
-            console.warn("No active survey found or backend offline", e);
-            return undefined;
-        }
+    deleteSurvey: async (id: UUID) => {
+        const response = await fetch(`${API_BASE_URL}/surveys/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete survey');
     },
 
     // --- Responses ---
@@ -75,7 +96,6 @@ export const db = {
         return await response.json();
     },
 
-    // Returns the LotteryResult from backend (won/lost + prize)
     saveResponse: async (response: SurveyResponse): Promise<LotteryResult> => {
         const res = await fetch(`${API_BASE_URL}/responses/`, {
             method: 'POST',
