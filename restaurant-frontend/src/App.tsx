@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { ViewState, type Merchant } from './types';
 import { CustomerApp } from './components/CustomerApp';
 import { MerchantDashboard } from './components/MerchantDashboard';
-import { UtensilsCrossed, Store, User, Globe } from 'lucide-react';
+import { Store, Globe } from 'lucide-react';
 import { db } from './services/api';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
 const AppContent: React.FC = () => {
     const { t, language, setLanguage } = useLanguage();
-    const [currentView, setCurrentView] = useState<ViewState>(ViewState.HOME);
+    // Default to MERCHANT_LOGIN instead of HOME
+    const [currentView, setCurrentView] = useState<ViewState>(ViewState.MERCHANT_LOGIN);
 
     // Merchant Auth State
     const [isRegistering, setIsRegistering] = useState(false);
@@ -73,10 +74,11 @@ const AppContent: React.FC = () => {
                 // CustomerApp handles its own internal routing now starting with Merchant List
                 return <CustomerApp
                     onBack={() => {
-                        // If we are backing out, we should probably clear the URL param state to allow full navigation
+                        // If we are backing out from QR mode, we might just stay here or reload,
+                        // but let's default to login screen if they somehow exit
                         setUrlMerchantId(null);
                         setUrlSurveyId(null);
-                        setCurrentView(ViewState.HOME);
+                        setCurrentView(ViewState.MERCHANT_LOGIN);
                     }}
                     preselectedMerchantId={urlMerchantId}
                     preselectedSurveyId={urlSurveyId}
@@ -96,15 +98,27 @@ const AppContent: React.FC = () => {
                 }
                 return <MerchantDashboard merchant={loggedInMerchant} onLogout={() => {
                     setLoggedInMerchant(null);
-                    setCurrentView(ViewState.HOME);
+                    setCurrentView(ViewState.MERCHANT_LOGIN);
                 }} />;
 
+            case ViewState.HOME: // Fallback to login
             case ViewState.MERCHANT_LOGIN:
+            default:
                 return (
-                    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-                        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
+                    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+                        {/* Branding Header */}
+                        <div className="mb-8 text-center animate-fade-in-down">
+                            <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight mb-2 drop-shadow-sm">
+                                DinePulse
+                            </h1>
+                            <p className="text-xl text-gray-500 font-medium tracking-wide">食刻脉动</p>
+                        </div>
+
+                        <div className="bg-white p-8 rounded-xl shadow-xl border border-indigo-50 max-w-md w-full">
                             <div className="text-center mb-6">
-                                <Store className="w-12 h-12 text-indigo-600 mx-auto mb-2" />
+                                <div className="bg-indigo-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <Store className="w-8 h-8 text-indigo-600" />
+                                </div>
                                 <h2 className="text-2xl font-bold text-gray-900">{isRegistering ? t.auth.registerTitle : t.auth.loginTitle}</h2>
                                 <p className="text-gray-500 text-sm mt-2">{t.auth.subTitle}</p>
                             </div>
@@ -127,7 +141,7 @@ const AppContent: React.FC = () => {
 
                                 {authError && <p className="text-red-500 text-sm bg-red-50 p-2 rounded">{authError}</p>}
 
-                                <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-semibold transition-colors">
+                                <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-semibold transition-colors shadow-md">
                                     {isRegistering ? t.auth.registerBtn : t.auth.loginBtn}
                                 </button>
                             </form>
@@ -136,34 +150,6 @@ const AppContent: React.FC = () => {
                                 <button onClick={() => { setIsRegistering(!isRegistering); setAuthError(''); }} className="text-indigo-600 hover:underline text-sm font-medium">
                                     {isRegistering ? t.auth.toLogin : t.auth.toRegister}
                                 </button>
-
-                                <button onClick={() => setCurrentView(ViewState.HOME)} className="w-full text-gray-400 text-sm hover:text-gray-600 block">
-                                    ← {t.auth.backHome}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                );
-
-            case ViewState.HOME:
-            default:
-                return (
-                    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-6 relative">
-                        <div className="max-w-4xl w-full grid md:grid-cols-2 gap-8">
-                            {/* Customer Card */}
-                            <div onClick={() => setCurrentView(ViewState.CUSTOMER_MERCHANT_LIST)} className="bg-white p-10 rounded-2xl shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:-translate-y-1 flex flex-col items-center text-center group">
-                                <div className="bg-indigo-100 p-6 rounded-full mb-6 group-hover:bg-indigo-200 transition-colors"><UtensilsCrossed className="w-16 h-16 text-indigo-600" /></div>
-                                <h2 className="text-3xl font-bold text-gray-800 mb-4">{t.home.customerTitle}</h2>
-                                <p className="text-gray-600 text-lg">{t.home.customerDesc}</p>
-                                <button className="mt-8 px-8 py-3 bg-indigo-600 text-white rounded-full font-semibold group-hover:bg-indigo-700 transition-colors">{t.home.startSurvey}</button>
-                            </div>
-
-                            {/* Merchant Card */}
-                            <div onClick={() => setCurrentView(ViewState.MERCHANT_LOGIN)} className="bg-slate-900 p-10 rounded-2xl shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:-translate-y-1 flex flex-col items-center text-center group">
-                                <div className="bg-slate-700 p-6 rounded-full mb-6 group-hover:bg-slate-600 transition-colors"><User className="w-16 h-16 text-white" /></div>
-                                <h2 className="text-3xl font-bold text-white mb-4">{t.home.merchantTitle}</h2>
-                                <p className="text-slate-300 text-lg">{t.home.merchantDesc}</p>
-                                <button className="mt-8 px-8 py-3 bg-white text-slate-900 rounded-full font-semibold group-hover:bg-gray-100 transition-colors">{t.home.merchantAccess}</button>
                             </div>
                         </div>
                     </div>
@@ -173,16 +159,18 @@ const AppContent: React.FC = () => {
 
     return (
         <>
-            {/* Global Language Toggle - Fixed to Top Right */}
-            <div className="fixed top-4 right-4 z-50">
-                <button
-                    onClick={toggleLanguage}
-                    className="flex items-center gap-2 bg-white/90 backdrop-blur shadow-md border border-gray-200 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-gray-50 text-indigo-700 transition-all"
-                >
-                    <Globe size={16} />
-                    {language === 'en' ? 'English' : '中文'}
-                </button>
-            </div>
+            {/* Global Language Toggle - Fixed to Top Right (Hidden on Merchant Dashboard) */}
+            {currentView !== ViewState.MERCHANT_DASHBOARD && (
+                <div className="fixed top-4 right-4 z-50">
+                    <button
+                        onClick={toggleLanguage}
+                        className="flex items-center gap-2 bg-white/90 backdrop-blur shadow-md border border-gray-200 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-gray-50 text-indigo-700 transition-all"
+                    >
+                        <Globe size={16} />
+                        {language === 'en' ? 'English' : '中文'}
+                    </button>
+                </div>
+            )}
             {renderContent()}
         </>
     );

@@ -1,3 +1,4 @@
+
 export const translations = {
     en: {
         common: {
@@ -44,6 +45,7 @@ export const translations = {
             tabSurveys: "Surveys",
             tabLotteries: "Lotteries",
             tabAnalytics: "Analytics",
+            tabCustomerView: "Customer View", // New
             backendError: "Backend Error. Is Python running on port 8001?",
             allRestaurants: "(All Restaurants)",
             owner: "Owner",
@@ -107,7 +109,8 @@ export const translations = {
 
             // Messages
             wonMsg: "You won",
-            noWinMsg: "Better luck next time."
+            noWinMsg: "Better luck next time.",
+            showToStaff: "Please show this page to staff to claim your prize."
         }
     },
     zh: {
@@ -155,6 +158,7 @@ export const translations = {
             tabSurveys: "问卷管理",
             tabLotteries: "抽奖管理",
             tabAnalytics: "数据分析",
+            tabCustomerView: "顾客预览", // New
             backendError: "后端连接错误。请确认 Python 服务是否运行在 8001 端口。",
             allRestaurants: "(所有餐厅)",
             owner: "拥有者",
@@ -218,7 +222,8 @@ export const translations = {
 
             // Messages
             wonMsg: "你赢得了",
-            noWinMsg: "很遗憾，这次没有中奖。"
+            noWinMsg: "很遗憾，这次没有中奖。",
+            showToStaff: "请将此页面向工作人员展示获取奖品"
         }
     }
 };
