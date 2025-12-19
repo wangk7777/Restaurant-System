@@ -25,3 +25,4 @@ restaurant-frontend/build/
 restaurant-frontend/.env.local
 restaurant-frontend/npm-debug.log*
 restaurant-frontend/yarn-error.log*
+restaurant-frontend/.env

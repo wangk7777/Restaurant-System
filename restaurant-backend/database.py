@@ -1,9 +1,16 @@
 import os
 from supabase import create_client, Client
 from typing import List, Optional, Dict
+from dotenv import load_dotenv
 
-SUPABASE_URL = "https://itxjtrxdstphodoaiolk.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0eGp0cnhkc3RwaG9kb2Fpb2xrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyMjkxMTEsImV4cCI6MjA4MDgwNTExMX0.MsWaNZ1REpAXvgh7LxmX4MQVRHvi951lZJuZLLspl1I"
+# 加载 .env 文件中的环境变量
+load_dotenv()
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("Warning: SUPABASE_URL or SUPABASE_KEY not found in environment variables.")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
