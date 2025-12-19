@@ -7,6 +7,8 @@ import random
 import schemas
 import database
 import traceback
+import os
+import google.generativeai as genai
 
 app = FastAPI(title="Restaurant Survey & Lottery API")
 
@@ -20,6 +22,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Gemini Configuration ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 
 def run_lottery_algorithm(lottery_id: str):
@@ -158,11 +165,13 @@ def create_survey(survey: schemas.SurveyCreate):
         new_id = str(uuid.uuid4())
         questions_data = []
         for q in survey.questions:
+            # Use provided ID if available (e.g. from frontend UUID generation), otherwise create new
+            q_id = str(q.id) if q.id else str(uuid.uuid4())
             questions_data.append({
-                "id": str(uuid.uuid4()),
+                "id": q_id,
                 "text": q.text,
                 "type": q.type,
-                "allow_other": q.allow_other,  # Fixed: Include allow_other
+                "allow_other": q.allow_other,
                 "options": q.options
             })
 
@@ -186,11 +195,14 @@ def update_survey(survey_id: str, survey: schemas.SurveyCreate):
     try:
         questions_data = []
         for q in survey.questions:
+            # IMPORTANT: Preserve existing ID if present to maintain analytics history
+            q_id = str(q.id) if q.id else str(uuid.uuid4())
+
             questions_data.append({
-                "id": str(uuid.uuid4()),
+                "id": q_id,
                 "text": q.text,
                 "type": q.type,
-                "allow_other": q.allow_other,  # Fixed: Include allow_other
+                "allow_other": q.allow_other,
                 "options": q.options
             })
 
@@ -261,3 +273,58 @@ def submit_response(response: schemas.SurveyResponseCreate):
 @app.get("/api/responses/")
 def get_responses(survey_id: Optional[str] = None):
     return database.get_responses(survey_id)
+
+
+# =================================================================
+# 🧠 AI Analytics (Gemini)
+# =================================================================
+
+@app.post("/api/analytics/analyze")
+def analyze_survey_with_ai(survey_id: str = Query(...)):
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured on server.")
+
+    try:
+        # 1. Fetch data
+        survey = database.get_survey_by_id(survey_id)
+        if not survey:
+            raise HTTPException(status_code=404, detail="Survey not found")
+
+        responses = database.get_responses(survey_id)
+        if not responses:
+            return {"analysis": "暂无数据，无法进行 AI 分析。请等待顾客提交问卷。"}
+
+        data_summary = ""
+        grouped_answers = {q['id']: [] for q in survey['questions']}
+        for r in responses:
+            for q_id, ans in r['answers'].items():
+                if q_id in grouped_answers:
+                    grouped_answers[q_id].append(ans)
+
+        for q in survey['questions']:
+            q_text = q['text']
+            ans_list = grouped_answers.get(q['id'], [])
+            ans_str = ", ".join(ans_list[:100])
+            data_summary += f"问题: {q_text}\n回答列表: {ans_str}\n\n"
+
+        prompt = f"""
+        你是一位专业的餐饮数据分析师。以下是一份餐厅问卷的原始数据。
+        请根据数据进行分析，用中文回答。请包含以下内容：
+        1. 总体满意度趋势。
+        2. 顾客最满意的点。
+        3. 顾客抱怨最多的点或需要改进的地方。
+        4. 给商家的具体行动建议 (3条)。
+
+        数据如下：
+        {data_summary}
+        """
+
+        # 3. Call Gemini using generativeai SDK
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        response = model.generate_content(prompt)
+
+        return {"analysis": response.text}
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"AI Analysis Failed: {str(e)}")

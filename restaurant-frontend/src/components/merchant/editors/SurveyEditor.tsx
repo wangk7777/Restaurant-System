@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import type { Survey, Lottery, Question, UUID } from '../../../types';
-import { X, QrCode, Download, Copy, ExternalLink, MessageSquare, List as ListIcon } from 'lucide-react';
+import {X, QrCode, Download, Copy, ExternalLink, MessageSquare, List as ListIcon, CheckSquare } from 'lucide-react';
 import { db } from '../../../services/api';
 
 interface SurveyEditorProps {
@@ -47,7 +47,7 @@ export const SurveyEditor: React.FC<SurveyEditorProps> = ({
             qs[idx].options = [];
             qs[idx].allow_other = false;
         }
-        if (field === 'type' && val === 'choice' && qs[idx].options.length === 0) {
+        if (field === 'type' && (val === 'choice' || val === 'multi') && qs[idx].options.length === 0) {
             qs[idx].options = [t.dashboard.options + ' A', t.dashboard.options + ' B'];
         }
         setSurvey({ ...survey, questions: qs });
@@ -57,7 +57,17 @@ export const SurveyEditor: React.FC<SurveyEditorProps> = ({
         ...survey,
         questions: [...(survey.questions || []), { id: generateUUID(), text: '', type: 'choice', allow_other: false, options: [t.dashboard.options + ' A', t.dashboard.options + ' B'] }]
     });
-    const removeQuestion = (idx: number) => { if (!survey.questions) return; const qs = [...survey.questions]; qs.splice(idx, 1); setSurvey({ ...survey, questions: qs }); };
+
+    const removeQuestion = (idx: number) => {
+        if (!survey.questions) return;
+
+        // Confirmation prompt to warn about analytics impact
+        if (!window.confirm(t.dashboard.deleteQuestionConfirm)) return;
+
+        const qs = [...survey.questions];
+        qs.splice(idx, 1);
+        setSurvey({ ...survey, questions: qs });
+    };
 
     const updateOption = (qIdx: number, oIdx: number, val: string) => { if (!survey.questions) return; const qs = [...survey.questions]; qs[qIdx].options[oIdx] = val; setSurvey({ ...survey, questions: qs }); };
     const addOption = (qIdx: number) => { if (!survey.questions) return; const qs = [...survey.questions]; qs[qIdx].options.push(t.common.new + ' ' + t.dashboard.options); setSurvey({ ...survey, questions: qs }); };
@@ -117,21 +127,26 @@ export const SurveyEditor: React.FC<SurveyEditorProps> = ({
 
                             <div className="mb-4">
                                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t.dashboard.answerType}</label>
-                                <div className="flex gap-4">
-                                    <label className={`flex items-center gap-2 cursor-pointer p-2 rounded border ${q.type === 'choice' || !q.type ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500' : 'bg-white border-gray-200'}`}>
+                                <div className="flex flex-wrap gap-3">
+                                    <label className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded border transition-all ${q.type === 'choice' || !q.type ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
                                         <input type="radio" className="hidden" name={`qtype-${q.id}`} checked={q.type === 'choice' || !q.type} onChange={() => updateQuestion(i, 'type', 'choice')} />
                                         <ListIcon size={16} className={q.type === 'choice' || !q.type ? 'text-indigo-600' : 'text-gray-400'}/>
-                                        <span className="text-sm">{t.dashboard.typeChoice}</span>
+                                        <span className="text-sm font-medium">{t.dashboard.typeChoice}</span>
                                     </label>
-                                    <label className={`flex items-center gap-2 cursor-pointer p-2 rounded border ${q.type === 'text' ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500' : 'bg-white border-gray-200'}`}>
+                                    <label className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded border transition-all ${q.type === 'multi' ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
+                                        <input type="radio" className="hidden" name={`qtype-${q.id}`} checked={q.type === 'multi'} onChange={() => updateQuestion(i, 'type', 'multi')} />
+                                        <CheckSquare size={16} className={q.type === 'multi' ? 'text-indigo-600' : 'text-gray-400'}/>
+                                        <span className="text-sm font-medium">{t.dashboard.typeMulti}</span>
+                                    </label>
+                                    <label className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded border transition-all ${q.type === 'text' ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500' : 'bg-white border-gray-200 hover:border-gray-300'}`}>
                                         <input type="radio" className="hidden" name={`qtype-${q.id}`} checked={q.type === 'text'} onChange={() => updateQuestion(i, 'type', 'text')} />
                                         <MessageSquare size={16} className={q.type === 'text' ? 'text-indigo-600' : 'text-gray-400'}/>
-                                        <span className="text-sm">{t.dashboard.typeText}</span>
+                                        <span className="text-sm font-medium">{t.dashboard.typeText}</span>
                                     </label>
                                 </div>
                             </div>
 
-                            {(q.type === 'choice' || !q.type) ? (
+                            {(q.type === 'choice' || q.type === 'multi' || !q.type) ? (
                                 <div className="pl-4 space-y-2 border-l-2 border-indigo-100">
                                     <label className="block text-xs font-bold text-gray-400 uppercase mb-2">{t.dashboard.options}</label>
                                     {q.options.map((opt, oIdx) => (

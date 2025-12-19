@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, CheckSquare, Square } from 'lucide-react';
 import type { Survey } from '../../../types';
 import { useLanguage } from '../../../contexts/LanguageContext';
 
@@ -15,6 +15,22 @@ interface SurveyFormProps {
 export const SurveyForm: React.FC<SurveyFormProps> = ({ survey, restaurantName, answers, onAnswerChange, onSubmit, onBack }) => {
     const { t } = useLanguage();
     const allAnswered = survey.questions.every(q => !!answers[q.id]);
+
+    const handleToggleMulti = (qId: string, option: string) => {
+        const current = answers[qId] ? answers[qId].split(', ') : [];
+        let next;
+        if (current.includes(option)) {
+            next = current.filter(o => o !== option);
+        } else {
+            next = [...current, option];
+        }
+        onAnswerChange(qId, next.join(', '));
+    };
+
+    const isOptionSelected = (qId: string, option: string) => {
+        if (!answers[qId]) return false;
+        return answers[qId].split(', ').includes(option);
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6">
@@ -38,6 +54,72 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({ survey, restaurantName, 
                                     value={answers[q.id] || ''}
                                     onChange={(e) => onAnswerChange(q.id, e.target.value)}
                                 />
+                            ) : q.type === 'multi' ? (
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {q.options.map((opt) => {
+                                            const selected = isOptionSelected(q.id, opt);
+                                            return (
+                                                <button
+                                                    key={opt}
+                                                    onClick={() => handleToggleMulti(q.id, opt)}
+                                                    className={`p-4 rounded-xl text-left border-2 transition-all flex justify-between items-center ${
+                                                        selected
+                                                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                                                            : 'border-transparent bg-gray-50 hover:bg-gray-100'
+                                                    }`}
+                                                >
+                                                    <span>{opt}</span>
+                                                    {selected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5 text-gray-300" />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {q.allow_other && (() => {
+                                        const currentAnswers = answers[q.id] ? answers[q.id].split(', ') : [];
+                                        // Identify text that is NOT in the standard options
+                                        const otherParts = currentAnswers.filter(a => !q.options.includes(a));
+                                        // Join them to display in input (in case multiple "other" values exist in backend data)
+                                        const otherText = otherParts.join(', ');
+                                        const isOtherSelected = otherParts.length > 0;
+
+                                        return (
+                                            <div
+                                                className={`p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${
+                                                    isOtherSelected
+                                                        ? 'border-indigo-600 bg-indigo-50'
+                                                        : 'border-transparent bg-gray-50'
+                                                }`}
+                                            >
+                                                <button
+                                                    onClick={() => {
+                                                        if (isOtherSelected) {
+                                                            // Clear text => Uncheck
+                                                            const standardOnly = currentAnswers.filter(a => q.options.includes(a));
+                                                            onAnswerChange(q.id, standardOnly.join(', '));
+                                                        }
+                                                    }}
+                                                    className="flex-shrink-0 focus:outline-none"
+                                                >
+                                                    {isOtherSelected ? <CheckSquare className="w-5 h-5 text-indigo-600" /> : <Square className="w-5 h-5 text-gray-300" />}
+                                                </button>
+                                                <input
+                                                    type="text"
+                                                    placeholder={t.customer.otherSpecify}
+                                                    className="flex-1 bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+                                                    value={otherText}
+                                                    onChange={(e) => {
+                                                        const newVal = e.target.value;
+                                                        // Keep standard options, replace custom text
+                                                        const standardOnly = currentAnswers.filter(a => q.options.includes(a));
+                                                        const next = newVal ? [...standardOnly, newVal] : standardOnly;
+                                                        onAnswerChange(q.id, next.join(', '));
+                                                    }}
+                                                />
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
                             ) : (
                                 <div className="space-y-3">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -58,7 +140,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({ survey, restaurantName, 
                                             </button>
                                         ))}
                                     </div>
-                                    {/* "Other" Option Rendering */}
+                                    {/* "Other" Option Rendering for Single Choice */}
                                     {q.allow_other && (
                                         <div
                                             className={`p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${
@@ -79,7 +161,6 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({ survey, restaurantName, 
                                                 value={(!q.options.includes(answers[q.id])) ? answers[q.id] || '' : ''}
                                                 onChange={(e) => onAnswerChange(q.id, e.target.value)}
                                                 onFocus={() => {
-                                                    // Ensure 'Other' is visibly selected when typing starts
                                                     if (answers[q.id] === undefined || q.options.includes(answers[q.id])) {
                                                         onAnswerChange(q.id, '');
                                                     }

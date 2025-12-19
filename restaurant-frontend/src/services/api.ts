@@ -1,3 +1,4 @@
+
 import type { Lottery, Survey, SurveyResponse, UUID, LotteryResult, Merchant } from '../types';
 
 const API_BASE_URL = 'http://127.0.0.1:8001/api';
@@ -104,5 +105,15 @@ export const db = {
         });
         if (!res.ok) throw new Error('Failed to submit response');
         return await res.json();
+    },
+
+    // --- AI Analytics ---
+    analyzeSurvey: async (surveyId: UUID): Promise<string> => {
+        const response = await fetch(`${API_BASE_URL}/analytics/analyze?survey_id=${surveyId}`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error('Analysis failed');
+        const data = await response.json();
+        return data.analysis;
     }
 };

@@ -128,8 +128,13 @@ def insert_response(response_data: dict):
 
 
 def get_responses(survey_id: Optional[str] = None):
-    query = supabase.table('responses').select("*").order('submitted_at', desc=True)
+    # Added .limit(1000) to ensure we get a list of historical data,
+    # overriding any potential default limit of 1.
     if survey_id:
-        query = query.eq('survey_id', survey_id)
-    response = query.execute()
+        response = supabase.table('responses').select("*").eq('survey_id', survey_id).order('submitted_at',
+                                                                                            desc=True).limit(
+            1000).execute()
+    else:
+        response = supabase.table('responses').select("*").order('submitted_at', desc=True).limit(1000).execute()
+
     return response.data

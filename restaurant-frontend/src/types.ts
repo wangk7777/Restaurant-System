@@ -22,7 +22,7 @@ export interface Lottery {
 export interface Question {
     id: UUID;
     text: string;
-    type: 'choice' | 'text';
+    type: 'choice' | 'multi' | 'text';
     allow_other: boolean;
     options: string[];
 }

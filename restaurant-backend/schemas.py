@@ -55,7 +55,7 @@ class QuestionBase(BaseModel):
     options: List[str] = []
 
 class QuestionCreate(QuestionBase):
-    pass
+    id: Optional[UUID] = None # Allow passing existing ID to preserve history
 
 class Question(QuestionBase):
     id: UUID
