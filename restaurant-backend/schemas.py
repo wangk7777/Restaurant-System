@@ -7,9 +7,16 @@ from datetime import datetime
 class MerchantBase(BaseModel):
     restaurant_name: str
     username: str
+    role: str = "manager" # 'owner', 'manager'
+    owner_id: Optional[UUID] = None
 
 class MerchantRegister(MerchantBase):
     password: str
+
+class MerchantUpdate(BaseModel):
+    restaurant_name: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
 
 class MerchantLogin(BaseModel):
     username: str
@@ -17,6 +24,7 @@ class MerchantLogin(BaseModel):
 
 class Merchant(MerchantBase):
     id: UUID
+    password: Optional[str] = None
     class Config:
         from_attributes = True
 

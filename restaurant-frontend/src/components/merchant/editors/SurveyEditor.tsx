@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { useLanguage } from '../../../contexts/LanguageContext';
-import type { Survey, Lottery, Question, UUID } from '../../../types';
+import type { Survey, Lottery, Question, UUID, Merchant } from '../../../types';
 import {X, QrCode, Download, Copy, ExternalLink, MessageSquare, List as ListIcon, CheckSquare } from 'lucide-react';
 import { db } from '../../../services/api';
 
@@ -8,6 +9,8 @@ interface SurveyEditorProps {
     initialData: Partial<Survey>;
     lotteries: Lottery[];
     isAdmin: boolean;
+    isOwner?: boolean;
+    ownedRestaurants: Merchant[];
     getMerchantName: (id: UUID) => string;
     onSave: () => void;
     onCancel: () => void;
@@ -18,7 +21,7 @@ interface SurveyEditorProps {
 const generateUUID = () => crypto.randomUUID();
 
 export const SurveyEditor: React.FC<SurveyEditorProps> = ({
-                                                              initialData, lotteries, isAdmin, getMerchantName, onSave, onCancel, currentMerchantId, isNew
+                                                              initialData, lotteries, isAdmin, isOwner, ownedRestaurants, getMerchantName, onSave, onCancel, currentMerchantId, isNew
                                                           }) => {
     const { t } = useLanguage();
     const [survey, setSurvey] = useState<Partial<Survey>>(initialData);
@@ -99,19 +102,72 @@ export const SurveyEditor: React.FC<SurveyEditorProps> = ({
         alert(t.common.success);
     };
 
+    // --- Filter Lotteries Logic ---
+    // Only show lotteries that belong to the selected merchant OR are shared (owned by current owner)
+    const availableLotteries = useMemo(() => {
+        return lotteries.filter(l => {
+            // Managers/Admins logic remains mostly standard (Managers only receive valid data anyway)
+            if (!isOwner && !isAdmin) return true;
+            if (isAdmin) return true;
+
+            // OWNER LOGIC:
+            const targetStoreId = survey.merchant_id;
+
+            // 1. Show if lottery is "Shared" (Belongs to the current logged-in Owner)
+            if (l.merchant_id === currentMerchantId) return true;
+
+            // 2. Show if lottery belongs to the specifically selected Target Store
+            // If no store selected yet, only shared lotteries are safe to show.
+            if (targetStoreId && l.merchant_id === targetStoreId) return true;
+
+            return false;
+        });
+    }, [lotteries, survey.merchant_id, isOwner, isAdmin, currentMerchantId]);
+
+
     return (
         <div className="bg-white p-6 rounded shadow max-w-3xl">
             <h3 className="text-xl font-bold mb-4">{t.dashboard.editSurvey}</h3>
             <div className="space-y-4">
-                {isAdmin && survey.merchant_id && (
-                    <div className="text-xs font-mono bg-yellow-50 p-2 text-yellow-800 border border-yellow-200 rounded">
-                        {t.dashboard.owner}: {getMerchantName(survey.merchant_id)} ({survey.merchant_id})
+                {/* Store Selection for Owners/Admins */}
+                {(isAdmin || isOwner) && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">{t.dashboard.assignedTo}</label>
+                        {isNew ? (
+                            <select
+                                className="border p-2 w-full rounded bg-gray-50"
+                                value={survey.merchant_id || ''}
+                                onChange={e => setSurvey({
+                                    ...survey,
+                                    merchant_id: e.target.value,
+                                    lottery_id: null // Reset lottery when changing store to avoid invalid links
+                                })}
+                            >
+                                {ownedRestaurants.map(r => (
+                                    <option key={r.id} value={r.id}>{r.restaurant_name}</option>
+                                ))}
+                                {isAdmin && !ownedRestaurants.length && <option value={survey.merchant_id}>{getMerchantName(survey.merchant_id!)}</option>}
+                            </select>
+                        ) : (
+                            <div className="text-sm font-mono bg-gray-100 p-2 rounded text-gray-700">
+                                {getMerchantName(survey.merchant_id!)}
+                            </div>
+                        )}
                     </div>
                 )}
+
                 <input className="border p-2 w-full rounded" placeholder={t.dashboard.surveyName} value={survey.name} onChange={e => setSurvey({...survey, name: e.target.value})} />
+
                 <select className="border p-2 w-full rounded" value={survey.lottery_id || ''} onChange={e => setSurvey({...survey, lottery_id: e.target.value || null})}>
                     <option value="">{t.dashboard.noLottery}</option>
-                    {lotteries.map(l => <option key={l.id} value={l.id}>{l.name} {isAdmin ? `(${getMerchantName(l.merchant_id)})` : ''}</option>)}
+                    {availableLotteries.map(l => (
+                        <option key={l.id} value={l.id}>
+                            {l.name}
+                            {isAdmin ? ` (${getMerchantName(l.merchant_id)})` : ''}
+                            {/* For Owners: Label Shared lotteries explicitly */}
+                            {isOwner && l.merchant_id === currentMerchantId ? ` (${t.dashboard.sharedLottery})` : ''}
+                        </option>
+                    ))}
                 </select>
                 <hr/>
                 {/* Questions */}

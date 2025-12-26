@@ -1,9 +1,13 @@
+
 export type UUID = string;
 
 export interface Merchant {
     id: UUID;
     restaurant_name: string;
     username: string;
+    role: 'admin' | 'owner' | 'manager';
+    owner_id?: UUID | null;
+    password?: string; // Only used for displaying in Owner view
 }
 
 export interface Prize {

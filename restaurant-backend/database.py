@@ -28,6 +28,25 @@ def register_merchant(merchant_data: dict):
     return response.data[0]
 
 
+def update_merchant(merchant_id: str, update_data: dict):
+    # 检查 username 冲突 (如果修改了 username)
+    if 'username' in update_data:
+        exist = supabase.table('merchants').select('id').eq('username', update_data['username']).neq('id',
+                                                                                                     merchant_id).execute()
+        if exist.data:
+            raise ValueError("Username already exists")
+
+    response = supabase.table('merchants').update(update_data).eq('id', merchant_id).execute()
+    if response.data:
+        return response.data[0]
+    return None
+
+
+def delete_merchant(merchant_id: str):
+    response = supabase.table('merchants').delete().eq('id', merchant_id).execute()
+    return response
+
+
 def login_merchant(username: str):
     response = supabase.table('merchants').select("*").eq('username', username).execute()
     if response.data:
@@ -43,7 +62,12 @@ def get_merchant_by_id(merchant_id: str):
 
 
 def get_all_merchants():
-    response = supabase.table('merchants').select("id, restaurant_name, username").execute()
+    response = supabase.table('merchants').select("*").execute()
+    return response.data
+
+
+def get_merchants_by_owner(owner_id: str):
+    response = supabase.table('merchants').select("*").eq('owner_id', owner_id).execute()
     return response.data
 
 
@@ -69,8 +93,21 @@ def delete_survey(survey_id: str):
 
 
 def get_surveys_by_merchant(merchant_id: str):
-    response = supabase.table('surveys').select("*").eq('merchant_id', merchant_id).order('created_at',
-                                                                                          desc=True).execute()
+    # Check if this merchant is an owner
+    merchant = get_merchant_by_id(merchant_id)
+
+    if merchant and merchant.get('role') == 'owner':
+        # Fetch surveys for self AND all owned sub-merchants
+        # 1. Get sub merchant IDs
+        subs = get_merchants_by_owner(merchant_id)
+        ids = [merchant_id] + [m['id'] for m in subs]
+        response = supabase.table('surveys').select("*").in_('merchant_id', ids).order('created_at',
+                                                                                       desc=True).execute()
+    else:
+        # Regular fetch
+        response = supabase.table('surveys').select("*").eq('merchant_id', merchant_id).order('created_at',
+                                                                                              desc=True).execute()
+
     return response.data
 
 
@@ -109,7 +146,24 @@ def delete_lottery(lottery_id: str):
 
 
 def get_lotteries_by_merchant(merchant_id: str):
-    response = supabase.table('lotteries').select("*").eq('merchant_id', merchant_id).execute()
+    merchant = get_merchant_by_id(merchant_id)
+
+    if not merchant:
+        return []
+
+    if merchant.get('role') == 'owner':
+        # Owner sees their own (shared) + all sub-merchants' lotteries
+        subs = get_merchants_by_owner(merchant_id)
+        ids = [merchant_id] + [m['id'] for m in subs]
+        response = supabase.table('lotteries').select("*").in_('merchant_id', ids).execute()
+    else:
+        # Regular Manager sees their own + their Owner's (Shared) lotteries
+        ids = [merchant_id]
+        if merchant.get('owner_id'):
+            ids.append(merchant['owner_id'])
+
+        response = supabase.table('lotteries').select("*").in_('merchant_id', ids).execute()
+
     return response.data
 
 

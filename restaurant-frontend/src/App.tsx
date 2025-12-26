@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ViewState, type Merchant } from './types';
 import { CustomerApp } from './components/CustomerApp';
@@ -13,6 +14,7 @@ const AppContent: React.FC = () => {
 
     // Merchant Auth State
     const [isRegistering, setIsRegistering] = useState(false);
+    const [isOwnerRegister, setIsOwnerRegister] = useState(false); // New state for Owner checkbox
     const [authError, setAuthError] = useState('');
     const [loggedInMerchant, setLoggedInMerchant] = useState<Merchant | null>(null);
 
@@ -50,7 +52,12 @@ const AppContent: React.FC = () => {
         try {
             if (isRegistering) {
                 if (!restaurantName) throw new Error("Restaurant name required");
-                const merchant = await db.registerMerchant({ restaurant_name: restaurantName, username, password });
+                const merchant = await db.registerMerchant({
+                    restaurant_name: restaurantName,
+                    username,
+                    password,
+                    role: isOwnerRegister ? 'owner' : 'manager'
+                });
                 // Auto login after register
                 setLoggedInMerchant(merchant);
                 setCurrentView(ViewState.MERCHANT_DASHBOARD);
@@ -60,7 +67,7 @@ const AppContent: React.FC = () => {
                 setCurrentView(ViewState.MERCHANT_DASHBOARD);
             }
             // Clear forms
-            setUsername(''); setPassword(''); setRestaurantName('');
+            setUsername(''); setPassword(''); setRestaurantName(''); setIsOwnerRegister(false);
         } catch (err: any) {
             setAuthError(err.message || t.common.error);
         }
@@ -139,6 +146,21 @@ const AppContent: React.FC = () => {
                                     <input type="password" className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500" value={password} onChange={e => setPassword(e.target.value)} required />
                                 </div>
 
+                                {isRegistering && (
+                                    <div className="flex items-start gap-2 pt-2">
+                                        <input
+                                            id="ownerCheck"
+                                            type="checkbox"
+                                            className="mt-1"
+                                            checked={isOwnerRegister}
+                                            onChange={e => setIsOwnerRegister(e.target.checked)}
+                                        />
+                                        <label htmlFor="ownerCheck" className="text-sm text-indigo-700 font-medium cursor-pointer">
+                                            {t.auth.roleOwner}
+                                        </label>
+                                    </div>
+                                )}
+
                                 {authError && <p className="text-red-500 text-sm bg-red-50 p-2 rounded">{authError}</p>}
 
                                 <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-semibold transition-colors shadow-md">
@@ -147,7 +169,7 @@ const AppContent: React.FC = () => {
                             </form>
 
                             <div className="mt-6 text-center space-y-4">
-                                <button onClick={() => { setIsRegistering(!isRegistering); setAuthError(''); }} className="text-indigo-600 hover:underline text-sm font-medium">
+                                <button onClick={() => { setIsRegistering(!isRegistering); setAuthError(''); setIsOwnerRegister(false); }} className="text-indigo-600 hover:underline text-sm font-medium">
                                     {isRegistering ? t.auth.toLogin : t.auth.toRegister}
                                 </button>
                             </div>

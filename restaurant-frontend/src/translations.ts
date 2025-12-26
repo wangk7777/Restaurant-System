@@ -31,6 +31,7 @@ export const translations = {
             restaurantName: "Restaurant Name",
             username: "Username",
             password: "Password",
+            roleOwner: "I am a Chain/Group Owner (Manage multiple stores)",
             loginBtn: "Sign In",
             registerBtn: "Create Account",
             toRegister: "New here? Register Restaurant",
@@ -45,10 +46,19 @@ export const translations = {
             tabSurveys: "Surveys",
             tabLotteries: "Lotteries",
             tabAnalytics: "Analytics",
-            tabCustomerView: "Customer View", // New
+            tabCustomerView: "Customer View",
+            tabRestaurants: "Restaurants", // New
             backendError: "Backend Error. Is Python running on port 8001?",
             allRestaurants: "(All Restaurants)",
             owner: "Owner",
+            assignedTo: "Assigned To:",
+
+            // Restaurant Mgmt
+            addNewRestaurant: "Add New Restaurant",
+            editRestaurant: "Edit Restaurant Credentials",
+            restaurantList: "Your Restaurants",
+            credsTitle: "Manager Credentials",
+            credsDesc: "Share these with your store manager to login.",
 
             // Survey Edit
             editSurvey: "Edit Survey",
@@ -79,6 +89,7 @@ export const translations = {
             prizes: "PRIZES",
             prob: "Prob %",
             addPrize: "Add Prize",
+            sharedLottery: "All Stores (Shared)",
 
             // Analytics
             selectSurvey: "Select Survey",
@@ -156,9 +167,10 @@ export const translations = {
             loginTitle: "商家登录",
             registerTitle: "注册餐厅",
             subTitle: "管理问卷与抽奖活动",
-            restaurantName: "餐厅名称",
+            restaurantName: "餐厅/品牌名称",
             username: "用户名",
             password: "密码",
+            roleOwner: "我是连锁/多店老板 (管理多家门店)",
             loginBtn: "登录",
             registerBtn: "创建账号",
             toRegister: "新用户？注册餐厅账号",
@@ -173,10 +185,19 @@ export const translations = {
             tabSurveys: "问卷管理",
             tabLotteries: "抽奖管理",
             tabAnalytics: "数据分析",
-            tabCustomerView: "顾客预览", // New
+            tabCustomerView: "顾客预览",
+            tabRestaurants: "门店管理", // New
             backendError: "后端连接错误。请确认 Python 服务是否运行在 8001 端口。",
             allRestaurants: "(所有餐厅)",
             owner: "拥有者",
+            assignedTo: "所属门店:",
+
+            // Restaurant Mgmt
+            addNewRestaurant: "添加新门店",
+            editRestaurant: "修改门店账号信息",
+            restaurantList: "您的门店列表",
+            credsTitle: "店长登录凭证",
+            credsDesc: "请将此用户名和密码分享给该店店长。",
 
             // Survey Edit
             editSurvey: "编辑问卷",
@@ -207,6 +228,7 @@ export const translations = {
             prizes: "奖品列表",
             prob: "概率 %",
             addPrize: "添加奖品",
+            sharedLottery: "所有门店通用 (共享)",
 
             // Analytics
             selectSurvey: "选择问卷",

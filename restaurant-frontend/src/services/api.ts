@@ -28,10 +28,40 @@ export const db = {
         return await response.json();
     },
 
-    getMerchants: async (): Promise<Merchant[]> => {
-        const response = await fetch(`${API_BASE_URL}/merchants`);
+    getMerchants: async (ownerId?: UUID): Promise<Merchant[]> => {
+        let url = `${API_BASE_URL}/merchants`;
+        if (ownerId) url += `?owner_id=${ownerId}`;
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch merchants');
         return await response.json();
+    },
+
+    saveMerchant: async (data: Partial<Merchant> & {password?: string}, isUpdate: boolean = false) => {
+        // If updating, data.id must be present
+        if (isUpdate && !data.id) throw new Error("ID required for update");
+
+        const url = isUpdate
+            ? `${API_BASE_URL}/merchants/${data.id}`
+            : `${API_BASE_URL}/auth/register`; // Create uses register endpoint
+
+        const method = isUpdate ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || 'Failed to save merchant');
+        }
+        return await response.json();
+    },
+
+    deleteMerchant: async (id: UUID) => {
+        const response = await fetch(`${API_BASE_URL}/merchants/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete merchant');
     },
 
     // --- Lotteries ---

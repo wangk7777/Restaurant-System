@@ -1,4 +1,4 @@
-/// <reference types="vite/client" />
+
 
 import * as React from 'react';
 
@@ -15,12 +15,8 @@ declare global {
         }
     }
 
-    // Use 'var process: any' to avoid "Cannot redeclare block-scoped variable 'process'"
-    // and ensure compatibility across Node.js (vite.config.ts) and the browser.
-    // This allows process.cwd() and process.env.API_KEY to be accessed without type errors.
-    // In Node.js environments (like vite.config.ts), the real process object will be used.
-    // In browser contexts, Vite's 'define' will handle the literal replacement of process.env.API_KEY.
-    var process: any;
+    // Fix: Removed the redundant 'var process' declaration to resolve "Cannot redeclare block-scoped variable 'process'".
+    // Augmenting the NodeJS namespace is sufficient to provide types for process.env.
 }
 
 declare module '*.svg' {

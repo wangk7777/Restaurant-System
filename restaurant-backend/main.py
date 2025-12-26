@@ -57,7 +57,9 @@ def register(merchant: schemas.MerchantRegister):
             "id": str(uuid.uuid4()),
             "restaurant_name": merchant.restaurant_name,
             "username": merchant.username,
-            "password": merchant.password  # 明文存储
+            "password": merchant.password,  # 明文存储
+            "role": merchant.role,
+            "owner_id": str(merchant.owner_id) if merchant.owner_id else None
         }
         return database.register_merchant(new_data)
     except ValueError as ve:
@@ -80,8 +82,37 @@ def login(creds: schemas.MerchantLogin):
 
 
 @app.get("/api/merchants", response_model=List[schemas.Merchant])
-def get_merchants():
+def get_merchants(owner_id: Optional[str] = None):
+    # If owner_id is provided, return their sub-merchants
+    if owner_id:
+        return database.get_merchants_by_owner(owner_id)
     return database.get_all_merchants()
+
+
+@app.put("/api/merchants/{merchant_id}", response_model=schemas.Merchant)
+def update_merchant(merchant_id: str, merchant: schemas.MerchantUpdate):
+    try:
+        update_data = {k: v for k, v in merchant.dict().items() if v is not None}
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        result = database.update_merchant(merchant_id, update_data)
+        return result
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/merchants/{merchant_id}")
+def delete_merchant(merchant_id: str):
+    try:
+        database.delete_merchant(merchant_id)
+        return {"message": "Merchant deleted"}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =================================================================
@@ -147,8 +178,11 @@ def delete_lottery(lottery_id: str):
 def get_lotteries(merchant_id: str = Query(..., description="Merchant ID is required")):
     try:
         requesting_merchant = database.get_merchant_by_id(merchant_id)
+        # Admin check
         if requesting_merchant and requesting_merchant.get('username') == 'admin':
             return database.get_all_lotteries_admin()
+
+        # Hierarchy check happens inside get_lotteries_by_merchant now
         return database.get_lotteries_by_merchant(merchant_id)
     except Exception as e:
         traceback.print_exc()
@@ -209,7 +243,9 @@ def update_survey(survey_id: str, survey: schemas.SurveyCreate):
         update_data = {
             "name": survey.name,
             "lottery_id": str(survey.lottery_id) if survey.lottery_id else None,
-            "questions": questions_data
+            "questions": questions_data,
+            # Also allow updating merchant_id to reassign surveys
+            "merchant_id": str(survey.merchant_id)
         }
 
         return database.update_survey(survey_id, update_data)

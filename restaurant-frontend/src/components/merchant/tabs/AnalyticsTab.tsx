@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { useLanguage } from '../../../contexts/LanguageContext';
-import type { Survey, SurveyResponse, UUID } from '../../../types';
+import type { Survey, SurveyResponse, UUID, Merchant } from '../../../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { db } from '../../../services/api';
 import { Sparkles, Loader2, Bot, Archive, AlertCircle, HelpCircle, Merge } from 'lucide-react';
@@ -10,12 +11,14 @@ import ReactMarkdown from 'react-markdown';
 interface AnalyticsTabProps {
     surveys: Survey[];
     isAdmin: boolean;
+    isOwner?: boolean;
+    ownedRestaurants?: Merchant[];
     getMerchantName: (id: UUID) => string;
 }
 
 const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6'];
 
-export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ surveys, isAdmin, getMerchantName }) => {
+export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ surveys, isAdmin, isOwner, ownedRestaurants, getMerchantName }) => {
     const { t, language } = useLanguage();
     const [selectedSurveyId, setSelectedSurveyId] = useState<UUID | ''>('');
     const [responses, setResponses] = useState<SurveyResponse[]>([]);
@@ -158,6 +161,28 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ surveys, isAdmin, ge
 
     const unlinkedData = getUnlinkedData();
 
+    // Group surveys by merchant for Owner view
+    const renderSurveyOptions = () => {
+        if (!isOwner || !ownedRestaurants) {
+            return surveys.map(s => (
+                <option key={s.id} value={s.id}>
+                    {s.name} {isAdmin ? `(${getMerchantName(s.merchant_id)})` : ''}
+                </option>
+            ));
+        }
+
+        // Grouping for Owner
+        return ownedRestaurants.map(store => {
+            const storeSurveys = surveys.filter(s => s.merchant_id === store.id);
+            if (storeSurveys.length === 0) return null;
+            return (
+                <optgroup key={store.id} label={store.restaurant_name}>
+                    {storeSurveys.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </optgroup>
+            );
+        });
+    };
+
     return (
         <div>
             <h2 className="text-2xl font-bold mb-4">{t.dashboard.tabAnalytics}</h2>
@@ -165,11 +190,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ surveys, isAdmin, ge
                 <div className="flex-1 min-w-[200px]">
                     <select className="border p-2.5 rounded w-full bg-white shadow-sm" value={selectedSurveyId} onChange={e => { setSelectedSurveyId(e.target.value); setAiResult(null); }}>
                         <option value="">{t.dashboard.selectSurvey}</option>
-                        {surveys.map(s => (
-                            <option key={s.id} value={s.id}>
-                                {s.name} {isAdmin ? `(${getMerchantName(s.merchant_id)})` : ''}
-                            </option>
-                        ))}
+                        {renderSurveyOptions()}
                     </select>
                 </div>
                 <button
