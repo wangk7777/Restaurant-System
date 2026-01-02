@@ -1,13 +1,52 @@
 
 import type { Lottery, Survey, SurveyResponse, UUID, LotteryResult, Merchant, DashboardStats, DashboardTrends } from '../types';
 
-// 在开发环境使用 localhost，在生产环境使用 VITE_API_URL 环境变量
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001/api';
+// 获取环境变量中的 API 地址
+let envApiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001/api';
+
+// --- URL Normalization Logic ---
+if (envApiUrl.endsWith('/')) {
+    envApiUrl = envApiUrl.slice(0, -1);
+}
+if (!envApiUrl.endsWith('/api')) {
+    envApiUrl += '/api';
+}
+
+const API_BASE_URL = envApiUrl;
+
+console.log("🔌 API Connected to:", API_BASE_URL);
+
+/**
+ * Enhanced Fetch with Retry Logic
+ * Handles Render/Supabase cold starts by retrying 5xx errors automatically.
+ */
+async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 3, backoff = 1000): Promise<Response> {
+    try {
+        const response = await fetch(url, options);
+
+        // If successful, return immediately
+        if (response.ok) return response;
+
+        // If it's a client error (4xx), don't retry (e.g., Wrong Password)
+        if (response.status < 500) return response;
+
+        // If it's a server error (500, 502, 503, 504), throw to trigger retry
+        throw new Error(`Server Error: ${response.status}`);
+    } catch (err) {
+        if (retries > 0) {
+            console.warn(`Request failed, retrying in ${backoff}ms... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, backoff));
+            // Exponential backoff: 1s -> 2s -> 4s
+            return fetchWithRetry(url, options, retries - 1, backoff * 2);
+        }
+        throw err;
+    }
+}
 
 export const db = {
     // --- Auth ---
     registerMerchant: async (data: Partial<Merchant> & {password: string}): Promise<Merchant> => {
-        const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -20,7 +59,7 @@ export const db = {
     },
 
     loginMerchant: async (username: string, password: string): Promise<Merchant> => {
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
@@ -32,22 +71,21 @@ export const db = {
     getMerchants: async (ownerId?: UUID): Promise<Merchant[]> => {
         let url = `${API_BASE_URL}/merchants`;
         if (ownerId) url += `?owner_id=${ownerId}`;
-        const response = await fetch(url);
+        const response = await fetchWithRetry(url);
         if (!response.ok) throw new Error('Failed to fetch merchants');
         return await response.json();
     },
 
     saveMerchant: async (data: Partial<Merchant> & {password?: string}, isUpdate: boolean = false) => {
-        // If updating, data.id must be present
         if (isUpdate && !data.id) throw new Error("ID required for update");
 
         const url = isUpdate
             ? `${API_BASE_URL}/merchants/${data.id}`
-            : `${API_BASE_URL}/auth/register`; // Create uses register endpoint
+            : `${API_BASE_URL}/auth/register`;
 
         const method = isUpdate ? 'PUT' : 'POST';
 
-        const response = await fetch(url, {
+        const response = await fetchWithRetry(url, {
             method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -61,13 +99,13 @@ export const db = {
     },
 
     deleteMerchant: async (id: UUID) => {
-        const response = await fetch(`${API_BASE_URL}/merchants/${id}`, { method: 'DELETE' });
+        const response = await fetchWithRetry(`${API_BASE_URL}/merchants/${id}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Failed to delete merchant');
     },
 
     // --- Lotteries ---
     getLotteries: async (merchantId: UUID): Promise<Lottery[]> => {
-        const response = await fetch(`${API_BASE_URL}/lotteries/?merchant_id=${merchantId}`);
+        const response = await fetchWithRetry(`${API_BASE_URL}/lotteries/?merchant_id=${merchantId}`);
         if (!response.ok) throw new Error('Failed to fetch lotteries');
         return await response.json();
     },
@@ -79,7 +117,7 @@ export const db = {
 
         const method = isUpdate ? 'PUT' : 'POST';
 
-        await fetch(url, {
+        await fetchWithRetry(url, {
             method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(lottery),
@@ -87,13 +125,13 @@ export const db = {
     },
 
     deleteLottery: async (id: UUID) => {
-        const response = await fetch(`${API_BASE_URL}/lotteries/${id}`, { method: 'DELETE' });
+        const response = await fetchWithRetry(`${API_BASE_URL}/lotteries/${id}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Failed to delete lottery');
     },
 
     // --- Surveys ---
     getSurveys: async (merchantId: UUID): Promise<Survey[]> => {
-        const response = await fetch(`${API_BASE_URL}/surveys/?merchant_id=${merchantId}`);
+        const response = await fetchWithRetry(`${API_BASE_URL}/surveys/?merchant_id=${merchantId}`);
         if (!response.ok) throw new Error('Failed to fetch surveys');
         return await response.json();
     },
@@ -105,7 +143,7 @@ export const db = {
 
         const method = isUpdate ? 'PUT' : 'POST';
 
-        await fetch(url, {
+        await fetchWithRetry(url, {
             method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(survey),
@@ -113,7 +151,7 @@ export const db = {
     },
 
     deleteSurvey: async (id: UUID) => {
-        const response = await fetch(`${API_BASE_URL}/surveys/${id}`, { method: 'DELETE' });
+        const response = await fetchWithRetry(`${API_BASE_URL}/surveys/${id}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Failed to delete survey');
     },
 
@@ -123,13 +161,13 @@ export const db = {
         if (surveyId) {
             url += `?survey_id=${surveyId}`;
         }
-        const response = await fetch(url);
+        const response = await fetchWithRetry(url);
         if (!response.ok) return [];
         return await response.json();
     },
 
     saveResponse: async (response: SurveyResponse): Promise<LotteryResult> => {
-        const res = await fetch(`${API_BASE_URL}/responses/`, {
+        const res = await fetchWithRetry(`${API_BASE_URL}/responses/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(response),
@@ -140,7 +178,7 @@ export const db = {
 
     // --- AI Analytics ---
     analyzeSurvey: async (surveyId: UUID, language: string = 'en'): Promise<string> => {
-        const response = await fetch(`${API_BASE_URL}/analytics/analyze?survey_id=${surveyId}&language=${language}`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}/analytics/analyze?survey_id=${surveyId}&language=${language}`, {
             method: 'POST'
         });
         if (!response.ok) throw new Error('Analysis failed');
@@ -153,7 +191,7 @@ export const db = {
         let url = `${API_BASE_URL}/analytics/dashboard-stats?merchant_id=${merchantId}`;
         if (filterStoreId) url += `&filter_merchant_id=${filterStoreId}`;
 
-        const response = await fetch(url);
+        const response = await fetchWithRetry(url);
         if (!response.ok) throw new Error("Failed to load stats");
         return await response.json();
     },
@@ -163,7 +201,7 @@ export const db = {
         if (filterStoreId) url += `&filter_merchant_id=${filterStoreId}`;
         if (targetDate) url += `&target_date=${targetDate}`;
 
-        const response = await fetch(url);
+        const response = await fetchWithRetry(url);
         if (!response.ok) throw new Error("Failed to load trends");
         return await response.json();
     }
