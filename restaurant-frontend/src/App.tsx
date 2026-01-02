@@ -26,16 +26,19 @@ const AppContent: React.FC = () => {
     // Preselected Params from URL (QR Code)
     const [urlMerchantId, setUrlMerchantId] = useState<string | null>(null);
     const [urlSurveyId, setUrlSurveyId] = useState<string | null>(null);
+    const [urlLotteryId, setUrlLotteryId] = useState<string | null>(null);
 
-    // Check for QR code link (?merchant_id=...&survey_id=...) on mount
+    // Check for QR code link (?merchant_id=...&survey_id=... OR &lottery_id=...) on mount
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const mId = params.get('merchant_id');
         const sId = params.get('survey_id');
+        const lId = params.get('lottery_id');
 
         if (mId) {
             setUrlMerchantId(mId);
             if (sId) setUrlSurveyId(sId);
+            if (lId) setUrlLotteryId(lId);
 
             // Directly jump to customer flow
             setCurrentView(ViewState.CUSTOMER_MERCHANT_LIST);
@@ -85,10 +88,12 @@ const AppContent: React.FC = () => {
                         // but let's default to login screen if they somehow exit
                         setUrlMerchantId(null);
                         setUrlSurveyId(null);
+                        setUrlLotteryId(null);
                         setCurrentView(ViewState.MERCHANT_LOGIN);
                     }}
                     preselectedMerchantId={urlMerchantId}
                     preselectedSurveyId={urlSurveyId}
+                    preselectedLotteryId={urlLotteryId}
                 />;
 
             case ViewState.MERCHANT_DASHBOARD:

@@ -5,7 +5,6 @@ import type { Survey, SurveyResponse, UUID, Merchant } from '../../../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { db } from '../../../services/api';
 import { Sparkles, Loader2, Bot, Archive, AlertCircle, HelpCircle, Merge } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
 
 interface AnalyticsTabProps {
@@ -44,76 +43,15 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ surveys, isAdmin, is
     };
 
     const handleAiAnalyze = async () => {
-        if (!selectedSurveyId || !selectedSurvey || responses.length === 0) return;
+        if (!selectedSurveyId) return;
         setIsAnalyzing(true);
         setAiResult(null);
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-            // Collect active data (including smart merged data essentially, represented by text)
-            const activeData = selectedSurvey.questions.map(q => {
-                // We use the same smart merge logic here to get full context
-                let answers: string[] = [];
-                responses.forEach(r => {
-                    const direct = r.answers?.[q.id];
-                    if (direct) answers.push(direct);
-
-                    // Smart Merge for AI Context
-                    Object.keys(r.answers || {}).forEach(key => {
-                        if (key === q.id || activeQuestionIds.has(key)) return;
-                        const val = r.answers[key];
-                        if (q.type === 'choice' && q.options.includes(val)) answers.push(val);
-                        if (q.type === 'multi' && val.split(', ').some(v => q.options.includes(v))) answers.push(val);
-                    });
-                });
-                return `Question: ${q.text} (Type: ${q.type})\nAnswers: ${answers.join(' | ')}`;
-            }).join('\n\n');
-
-            const unlinked = getUnlinkedData();
-            const unlinkedData = unlinked.map(u => `Historical Question (ID: ${u.id}): ${u.answers.join(' | ')}`).join('\n\n');
-
-            const prompt = `
-                You are a world-class restaurant business consultant. Analyze the following survey data for "${selectedSurvey.name}".
-                
-                DATA OVERVIEW:
-                ${activeData}
-
-                HISTORICAL CONTEXT (Old versions of questions):
-                ${unlinkedData}
-                
-                Please provide your analysis in ${language === 'zh' ? 'Chinese' : 'English'} using Markdown format.
-                
-                Strictly follow this structure for your analysis:
-
-                ### 1. User Persona & Growth Strategy (用户画像与增长策略)
-                - **User Persona**: Analyze the main consumer demographics (e.g., dining purpose, group size, preferences) based on the answers.
-                - **Growth Strategy**: Provide specific strategies on how to attract more consumers matching this persona.
-
-                ### 2. Performance Diagnosis (经营表现深度诊断)
-                *Combine Overall Satisfaction, Strengths, and Weaknesses here.*
-                - **Overall Satisfaction**: Brief summary of the sentiment trend.
-                - **Key Strengths**: What are customers happiest about?
-                - **Critical Weaknesses**: (Focus heavily here) Deeply analyze the most complained points. Dig into the root causes based on the data.
-
-                ### 3. Recommended New Survey Questions (建议新增的问卷问题)
-                - Based on the "Critical Weaknesses" identified above, design **3 specific new questions** to include in the next survey.
-                - The goal is to gather more complete feedback to solve the identified weaknesses.
-                - Explain *why* each question is needed.
-            `;
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: prompt,
-                config: { temperature: 0.7 }
-            });
-
-            if (response.text) {
-                setAiResult(response.text);
-            } else {
-                throw new Error("Empty response from AI");
-            }
-
+            // Use the backend endpoint instead of direct client-side call
+            // This secures the API Key and centralizes logic
+            const analysisText = await db.analyzeSurvey(selectedSurveyId, language);
+            setAiResult(analysisText);
         } catch (e) {
             console.error("AI Analysis Error:", e);
             const errorMsg = e instanceof Error ? e.message : String(e);

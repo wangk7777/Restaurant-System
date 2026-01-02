@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Merchant } from '../types';
-import { FileText, Gift, LogOut, BarChart2, ShieldAlert, AlertTriangle, Globe, Smartphone, UtensilsCrossed, Building, Store } from 'lucide-react';
+import { FileText, Gift, LogOut, BarChart2, ShieldAlert, AlertTriangle, Globe, Smartphone, UtensilsCrossed, Building, Store, Menu, X, Settings, LayoutDashboard } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useMerchantData } from '../hooks/useMerchantData';
 import { SurveysTab } from './merchant/tabs/SurveysTab';
 import { LotteriesTab } from './merchant/tabs/LotteriesTab';
 import { AnalyticsTab } from './merchant/tabs/AnalyticsTab';
 import { RestaurantsTab } from './merchant/tabs/RestaurantsTab';
+import { SettingsTab } from './merchant/tabs/SettingsTab';
+import { HomeTab } from './merchant/tabs/HomeTab';
 import { CustomerApp } from './CustomerApp';
 
 interface MerchantDashboardProps {
@@ -15,10 +17,18 @@ interface MerchantDashboardProps {
     onLogout: () => void;
 }
 
-export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ merchant, onLogout }) => {
+export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ merchant: initialMerchant, onLogout }) => {
     const { t, language, setLanguage } = useLanguage();
-    const [activeTab, setActiveTab] = useState<'SURVEYS' | 'LOTTERIES' | 'ANALYTICS' | 'CUSTOMER_VIEW' | 'RESTAURANTS'>('SURVEYS');
+    // Set HOME as default
+    const [activeTab, setActiveTab] = useState<'HOME' | 'SURVEYS' | 'LOTTERIES' | 'ANALYTICS' | 'CUSTOMER_VIEW' | 'RESTAURANTS' | 'SETTINGS'>('HOME');
     const [customerPreviewStarted, setCustomerPreviewStarted] = useState(false);
+
+    // Maintain local merchant state to update UI immediately after settings change
+    const [merchant, setMerchant] = useState(initialMerchant);
+    useEffect(() => { setMerchant(initialMerchant); }, [initialMerchant]);
+
+    // Mobile Sidebar State
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // State to track selected store for Owner Preview
     const [previewMerchantId, setPreviewMerchantId] = useState<string>('');
@@ -38,22 +48,58 @@ export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ merchant, 
     }
 
     // Determine which ID to pass to CustomerApp
-    // 1. If owner, use the selected dropdown ID
-    // 2. If regular manager, use their own ID
-    // 3. If admin, pass null (let them pick)
     const getPreselectedMerchantId = () => {
         if (isOwner) return previewMerchantId || null;
         if (!isAdmin) return merchant.id;
         return null;
     };
 
+    const handleTabChange = (tab: typeof activeTab) => {
+        setActiveTab(tab);
+        setCustomerPreviewStarted(false);
+        setIsMobileMenuOpen(false); // Close mobile menu on selection
+    };
+
     return (
-        <div className="flex h-screen bg-gray-50">
+        <div className="flex h-screen bg-gray-50 overflow-hidden">
+            {/* Mobile Header */}
+            <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 text-white z-40 flex items-center px-4 justify-between shadow-md">
+                <div className="flex items-center gap-3">
+                    <button onClick={() => setIsMobileMenuOpen(true)} className="p-1">
+                        <Menu size={24} />
+                    </button>
+                    <span className="font-bold text-lg">DinePulse</span>
+                </div>
+                <div className="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300 truncate max-w-[120px]">
+                    {merchant.restaurant_name}
+                </div>
+            </div>
+
+            {/* Mobile Overlay */}
+            {isMobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className="w-64 bg-slate-900 text-white p-6 flex flex-col">
-                <div className="mb-2">
-                    <h1 className="text-2xl font-extrabold tracking-tight">DinePulse</h1>
-                    <div className="text-indigo-400 font-medium text-sm tracking-wide">商家端</div>
+            <aside
+                className={`
+                    fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white p-6 flex flex-col shadow-2xl transition-transform duration-300 ease-in-out
+                    md:relative md:translate-x-0 md:shadow-none
+                    ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+                `}
+            >
+                <div className="flex justify-between items-center mb-6 md:mb-2">
+                    <div>
+                        <h1 className="text-2xl font-extrabold tracking-tight">DinePulse</h1>
+                        <div className="text-indigo-400 font-medium text-sm tracking-wide">商家端</div>
+                    </div>
+                    {/* Close button for mobile */}
+                    <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-400 hover:text-white">
+                        <X size={24} />
+                    </button>
                 </div>
 
                 <div className="text-xs text-slate-400 mb-8 flex flex-col gap-1 border-b border-slate-700 pb-4 mt-2">
@@ -66,27 +112,34 @@ export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ merchant, 
                 </div>
 
                 <nav className="space-y-4 flex-1">
-                    <button onClick={() => { setActiveTab('SURVEYS'); setCustomerPreviewStarted(false); }} className={`flex items-center gap-3 w-full text-left p-2 rounded ${activeTab === 'SURVEYS' ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}>
+                    <button onClick={() => handleTabChange('HOME')} className={`flex items-center gap-3 w-full text-left p-2 rounded ${activeTab === 'HOME' ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}>
+                        <LayoutDashboard size={18} /> {t.dashboard.tabHome}
+                    </button>
+                    <button onClick={() => handleTabChange('SURVEYS')} className={`flex items-center gap-3 w-full text-left p-2 rounded ${activeTab === 'SURVEYS' ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}>
                         <FileText size={18} /> {t.dashboard.tabSurveys}
                     </button>
-                    <button onClick={() => { setActiveTab('LOTTERIES'); setCustomerPreviewStarted(false); }} className={`flex items-center gap-3 w-full text-left p-2 rounded ${activeTab === 'LOTTERIES' ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}>
+                    <button onClick={() => handleTabChange('LOTTERIES')} className={`flex items-center gap-3 w-full text-left p-2 rounded ${activeTab === 'LOTTERIES' ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}>
                         <Gift size={18} /> {t.dashboard.tabLotteries}
                     </button>
-                    <button onClick={() => { setActiveTab('ANALYTICS'); setCustomerPreviewStarted(false); }} className={`flex items-center gap-3 w-full text-left p-2 rounded ${activeTab === 'ANALYTICS' ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}>
+                    <button onClick={() => handleTabChange('ANALYTICS')} className={`flex items-center gap-3 w-full text-left p-2 rounded ${activeTab === 'ANALYTICS' ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}>
                         <BarChart2 size={18} /> {t.dashboard.tabAnalytics}
                     </button>
                     {/* Owner Tab */}
                     {isOwner && (
-                        <button onClick={() => { setActiveTab('RESTAURANTS'); setCustomerPreviewStarted(false); }} className={`flex items-center gap-3 w-full text-left p-2 rounded ${activeTab === 'RESTAURANTS' ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}>
+                        <button onClick={() => handleTabChange('RESTAURANTS')} className={`flex items-center gap-3 w-full text-left p-2 rounded ${activeTab === 'RESTAURANTS' ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}>
                             <Store size={18} /> {t.dashboard.tabRestaurants}
                         </button>
                     )}
-                    <button onClick={() => { setActiveTab('CUSTOMER_VIEW'); setCustomerPreviewStarted(false); }} className={`flex items-center gap-3 w-full text-left p-2 rounded ${activeTab === 'CUSTOMER_VIEW' ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}>
+                    <button onClick={() => handleTabChange('CUSTOMER_VIEW')} className={`flex items-center gap-3 w-full text-left p-2 rounded ${activeTab === 'CUSTOMER_VIEW' ? 'bg-indigo-600' : 'hover:bg-slate-800'}`}>
                         <Smartphone size={18} /> {t.dashboard.tabCustomerView}
                     </button>
                 </nav>
 
                 <div className="border-t border-slate-800 pt-4 mt-4">
+                    <button onClick={() => handleTabChange('SETTINGS')} className={`flex items-center gap-3 w-full text-left p-2 rounded mb-2 transition-colors ${activeTab === 'SETTINGS' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                        <Settings size={18} /> {t.dashboard.tabSettings}
+                    </button>
+
                     <button
                         onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
                         className="flex items-center gap-3 text-slate-400 hover:text-white w-full text-left p-2 rounded hover:bg-slate-800 mb-2 transition-colors"
@@ -101,12 +154,21 @@ export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ merchant, 
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 p-8 overflow-auto flex flex-col relative">
+            <main className="flex-1 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto overflow-x-hidden flex flex-col relative h-full w-full">
                 {connectionError && (
                     <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center gap-3 flex-shrink-0">
                         <AlertTriangle className="w-6 h-6" />
                         <div>{t.dashboard.backendError}</div>
                     </div>
+                )}
+
+                {activeTab === 'HOME' && (
+                    <HomeTab
+                        merchant={merchant}
+                        isAdmin={isAdmin}
+                        isOwner={isOwner}
+                        ownedRestaurants={ownedRestaurants}
+                    />
                 )}
 
                 {activeTab === 'SURVEYS' && (
@@ -152,11 +214,18 @@ export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ merchant, 
                     />
                 )}
 
+                {activeTab === 'SETTINGS' && (
+                    <SettingsTab
+                        merchant={merchant}
+                        onUpdate={(updated) => setMerchant(updated)}
+                    />
+                )}
+
                 {activeTab === 'CUSTOMER_VIEW' && (
-                    <div className="flex-1 flex flex-col h-full">
+                    <div className="flex-1 flex flex-col h-full min-h-[500px]">
                         {!customerPreviewStarted ? (
                             <div className="flex-1 flex items-center justify-center">
-                                <div className="bg-white p-10 rounded-2xl shadow-xl flex flex-col items-center text-center max-w-md w-full border border-gray-100">
+                                <div className="bg-white p-6 md:p-10 rounded-2xl shadow-xl flex flex-col items-center text-center max-w-md w-full border border-gray-100 mx-auto">
                                     <div className="bg-indigo-100 p-6 rounded-full mb-6">
                                         <UtensilsCrossed className="w-16 h-16 text-indigo-600" />
                                     </div>
@@ -182,7 +251,7 @@ export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ merchant, 
                                     <button
                                         onClick={() => setCustomerPreviewStarted(true)}
                                         disabled={isOwner && !previewMerchantId}
-                                        className="px-8 py-3 bg-indigo-600 text-white rounded-full font-semibold hover:bg-indigo-700 transition-colors shadow-lg disabled:bg-gray-400"
+                                        className="px-8 py-3 bg-indigo-600 text-white rounded-full font-semibold hover:bg-indigo-700 transition-colors shadow-lg disabled:bg-gray-400 w-full md:w-auto"
                                     >
                                         {t.home.startSurvey}
                                     </button>

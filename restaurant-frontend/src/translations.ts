@@ -43,15 +43,35 @@ export const translations = {
         dashboard: {
             title: "MERCHANTHUB",
             sysAdmin: "System Admin",
+            tabHome: "Home", // New
             tabSurveys: "Surveys",
             tabLotteries: "Lotteries",
             tabAnalytics: "Analytics",
             tabCustomerView: "Customer View",
-            tabRestaurants: "Restaurants", // New
+            tabRestaurants: "Restaurants",
+            tabSettings: "Settings",
+            settingsTitle: "Account Settings",
+            updateSuccess: "Account updated successfully",
             backendError: "Backend Error. Is Python running on port 8001?",
             allRestaurants: "(All Restaurants)",
             owner: "Owner",
             assignedTo: "Assigned To:",
+
+            // Home Dashboard (New)
+            sectionOverview: "My Restaurant",
+            sectionToday: "Today's Pulse",
+            sectionHistory: "Historical Statistics",
+            totalRestaurants: "Total Restaurants",
+            totalSurveys: "Total Surveys",
+            totalResponses: "Total Responses",
+            totalOwners: "Total Owners",
+            viewModeMonth: "Daily View (Select Month)",
+            viewModeYear: "Monthly View (Select Year)",
+            responsesToday: "Daily / Last Day",
+            responsesMonth: "Period Total",
+            vsYesterday: "vs Day Before",
+            vsLastMonth: "vs Prev Period",
+            chartTitle: "Response Trend",
 
             // Restaurant Mgmt
             addNewRestaurant: "Add New Restaurant",
@@ -94,7 +114,6 @@ export const translations = {
             // Analytics
             selectSurvey: "Select Survey",
             loadReport: "Load Report",
-            totalResponses: "Total Responses",
             otherResponses: "Other Responses",
             noTextResponses: "No text responses yet.",
             noData: "Select a survey to see data.",
@@ -182,15 +201,35 @@ export const translations = {
         dashboard: {
             title: "商家中心",
             sysAdmin: "系统管理员",
+            tabHome: "主页", // New
             tabSurveys: "问卷管理",
             tabLotteries: "抽奖管理",
             tabAnalytics: "数据分析",
             tabCustomerView: "顾客预览",
-            tabRestaurants: "门店管理", // New
+            tabRestaurants: "门店管理",
+            tabSettings: "系统设置",
+            settingsTitle: "账号设置",
+            updateSuccess: "账号信息更新成功",
             backendError: "后端连接错误。请确认 Python 服务是否运行在 8001 端口。",
             allRestaurants: "(所有餐厅)",
             owner: "拥有者",
             assignedTo: "所属门店:",
+
+            // Home Dashboard (New)
+            sectionOverview: "我的餐厅",
+            sectionToday: "今日数据",
+            sectionHistory: "历史数据统计",
+            totalRestaurants: "餐厅数量",
+            totalSurveys: "问卷数量",
+            totalResponses: "回复总数",
+            totalOwners: "老板账号",
+            viewModeMonth: "按日查看 (选择月份)",
+            viewModeYear: "按月查看 (选择年份)",
+            responsesToday: "单日数据 / 当日",
+            responsesMonth: "本期总数",
+            vsYesterday: "较前一日",
+            vsLastMonth: "较上期",
+            chartTitle: "回复趋势",
 
             // Restaurant Mgmt
             addNewRestaurant: "添加新门店",
@@ -233,7 +272,6 @@ export const translations = {
             // Analytics
             selectSurvey: "选择问卷",
             loadReport: "加载报表",
-            totalResponses: "总回复数量",
             otherResponses: "其他回答",
             noTextResponses: "暂无文本回答。",
             noData: "请选择一个问卷以查看数据。",

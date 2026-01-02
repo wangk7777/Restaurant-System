@@ -55,6 +55,43 @@ export interface LotteryResult {
     message: string;
 }
 
+// --- Dashboard Types ---
+
+export interface TodayStats {
+    today_count: number;
+    yesterday_count: number;
+    diff: number;
+    growth_pct: number;
+}
+
+export interface DashboardStats {
+    total_restaurants: number;
+    total_surveys: number;
+    total_responses: number;
+    total_owners?: number; // Admin only
+    today_data?: TodayStats;
+}
+
+export interface ChartPoint {
+    label: string;
+    value: number;
+    full_date?: string;
+}
+
+export interface GrowthStats {
+    today_count: number;
+    yesterday_count: number;
+    daily_growth_pct: number;
+    month_count: number;
+    last_month_count: number;
+    monthly_growth_pct: number;
+}
+
+export interface DashboardTrends {
+    stats: GrowthStats;
+    chart_data: ChartPoint[];
+}
+
 export const ViewState = {
     HOME: 'HOME',
     CUSTOMER_MERCHANT_LIST: 'CUSTOMER_MERCHANT_LIST',

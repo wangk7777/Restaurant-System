@@ -71,6 +71,11 @@ def get_merchants_by_owner(owner_id: str):
     return response.data
 
 
+def get_owner_count():
+    response = supabase.table('merchants').select("id", count='exact').eq('role', 'owner').execute()
+    return response.count
+
+
 # ==========================================
 # 📋 问卷 (Surveys)
 # ==========================================
@@ -122,6 +127,17 @@ def get_survey_by_id(survey_id: str):
     if response.data:
         return response.data[0]
     return None
+
+
+def get_survey_ids_by_merchant(merchant_id: str):
+    """ Optimized fetch for just IDs """
+    data = get_surveys_by_merchant(merchant_id)
+    return [s['id'] for s in data]
+
+
+def get_all_survey_ids():
+    response = supabase.table('surveys').select("id").execute()
+    return [s['id'] for s in response.data]
 
 
 # ==========================================
@@ -189,13 +205,77 @@ def insert_response(response_data: dict):
 
 
 def get_responses(survey_id: Optional[str] = None):
-    # Added .limit(1000) to ensure we get a list of historical data,
-    # overriding any potential default limit of 1.
-    if survey_id:
-        response = supabase.table('responses').select("*").eq('survey_id', survey_id).order('submitted_at',
-                                                                                            desc=True).limit(
-            1000).execute()
-    else:
-        response = supabase.table('responses').select("*").order('submitted_at', desc=True).limit(1000).execute()
+    # Fix: Implement Pagination Loop to bypass Supabase default 1000 row limit
+    # We will fetch up to 10,000 detailed responses for Analytics
+    all_responses = []
+    batch_size = 1000
+    start = 0
+    max_limit = 10000
 
-    return response.data
+    while True:
+        end = start + batch_size - 1
+        query = supabase.table('responses').select("*")
+
+        if survey_id:
+            query = query.eq('survey_id', survey_id)
+
+        # Use range to paginate: 0-999, 1000-1999, etc.
+        response = query.order('submitted_at', desc=True).range(start, end).execute()
+        data = response.data
+
+        if not data:
+            break
+
+        all_responses.extend(data)
+
+        # Stop if we fetched fewer than batch_size (end of data) or reached our safety cap
+        if len(data) < batch_size or len(all_responses) >= max_limit:
+            break
+
+        start += batch_size
+
+    return all_responses
+
+
+def get_response_timestamps(survey_ids: List[str]):
+    """
+    Optimized for Analytics: Only fetch submitted_at field.
+    Fix: Implement Pagination Loop to fetch up to 100,000 timestamps for Charts
+    """
+    if not survey_ids:
+        return []
+
+    all_timestamps = []
+    batch_size = 1000
+    start = 0
+    max_limit = 100000
+
+    while True:
+        end = start + batch_size - 1
+        response = supabase.table('responses').select("submitted_at") \
+            .in_('survey_id', survey_ids) \
+            .range(start, end) \
+            .execute()
+
+        data = response.data
+
+        if not data:
+            break
+
+        for r in data:
+            all_timestamps.append(r['submitted_at'])
+
+        if len(data) < batch_size or len(all_timestamps) >= max_limit:
+            break
+
+        start += batch_size
+
+    return all_timestamps
+
+
+def count_responses_by_surveys(survey_ids: List[str]):
+    if not survey_ids:
+        return 0
+    # count='exact' works correctly even with large datasets without needing pagination loop
+    response = supabase.table('responses').select("id", count='exact').in_('survey_id', survey_ids).execute()
+    return response.count

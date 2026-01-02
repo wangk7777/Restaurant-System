@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCustomerFlow } from '../hooks/useCustomerFlow';
@@ -11,9 +12,10 @@ interface CustomerAppProps {
     onBack: () => void;
     preselectedMerchantId?: string | null;
     preselectedSurveyId?: string | null;
+    preselectedLotteryId?: string | null;
 }
 
-export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMerchantId, preselectedSurveyId }) => {
+export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMerchantId, preselectedSurveyId, preselectedLotteryId }) => {
     const { t } = useLanguage();
 
     // Use the custom hook to manage all state and logic
@@ -34,7 +36,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({ onBack, preselectedMer
         handleSubmitSurvey,
         handleBack,
         handleRestart
-    } = useCustomerFlow(onBack, preselectedMerchantId, preselectedSurveyId);
+    } = useCustomerFlow(onBack, preselectedMerchantId, preselectedSurveyId, preselectedLotteryId);
 
     if (loading) {
         return <div className="flex h-screen items-center justify-center text-indigo-600 font-bold">{t.common.loading}</div>;

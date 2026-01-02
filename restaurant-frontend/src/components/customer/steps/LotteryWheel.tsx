@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState} from 'react';
 import type { Lottery, Prize } from '../../../types';
 import { useLanguage } from '../../../contexts/LanguageContext';
 
@@ -85,13 +86,14 @@ export const LotteryWheel: React.FC<LotteryWheelProps> = ({ lottery, wonPrize, o
 
     return (
         <div className="min-h-screen bg-indigo-900 flex flex-col items-center justify-center p-4 overflow-hidden relative">
-            <div className="relative z-10">
-                <div className="relative w-[320px] h-[320px] rounded-full border-8 border-white shadow-2xl bg-white overflow-hidden">
+            <div className="relative z-10 w-full flex justify-center">
+                {/* Responsive container: max width 320px, but shrinks on small screens, maintaining aspect ratio */}
+                <div className="relative w-full max-w-[320px] aspect-square rounded-full border-8 border-white shadow-2xl bg-white overflow-hidden">
                     <svg viewBox="0 0 300 300" className="w-full h-full" style={{ transform: `rotate(${rotation}deg)`, transition: isSpinning ? 'transform 3.5s cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none' }}>
                         {segments}
                     </svg>
                 </div>
-                <div className="absolute top-1/2 right-[-20px] transform -translate-y-1/2 -rotate-90 z-20">
+                <div className="absolute top-1/2 right-[calc(50%-170px)] md:right-[calc(50%-180px)] transform -translate-y-1/2 -rotate-90 z-20">
                     <div className="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-b-[30px] border-b-yellow-400 drop-shadow-md"></div>
                 </div>
             </div>

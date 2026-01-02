@@ -1,7 +1,8 @@
 
-import type { Lottery, Survey, SurveyResponse, UUID, LotteryResult, Merchant } from '../types';
+import type { Lottery, Survey, SurveyResponse, UUID, LotteryResult, Merchant, DashboardStats, DashboardTrends } from '../types';
 
-const API_BASE_URL = 'http://127.0.0.1:8001/api';
+// 在开发环境使用 localhost，在生产环境使用 VITE_API_URL 环境变量
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001/api';
 
 export const db = {
     // --- Auth ---
@@ -138,12 +139,32 @@ export const db = {
     },
 
     // --- AI Analytics ---
-    analyzeSurvey: async (surveyId: UUID): Promise<string> => {
-        const response = await fetch(`${API_BASE_URL}/analytics/analyze?survey_id=${surveyId}`, {
+    analyzeSurvey: async (surveyId: UUID, language: string = 'en'): Promise<string> => {
+        const response = await fetch(`${API_BASE_URL}/analytics/analyze?survey_id=${surveyId}&language=${language}`, {
             method: 'POST'
         });
         if (!response.ok) throw new Error('Analysis failed');
         const data = await response.json();
         return data.analysis;
+    },
+
+    // --- Dashboard Analytics ---
+    getDashboardStats: async (merchantId: UUID, filterStoreId?: string): Promise<DashboardStats> => {
+        let url = `${API_BASE_URL}/analytics/dashboard-stats?merchant_id=${merchantId}`;
+        if (filterStoreId) url += `&filter_merchant_id=${filterStoreId}`;
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Failed to load stats");
+        return await response.json();
+    },
+
+    getDashboardTrends: async (merchantId: UUID, viewMode: 'month'|'year', filterStoreId?: string, targetDate?: string): Promise<DashboardTrends> => {
+        let url = `${API_BASE_URL}/analytics/trends?merchant_id=${merchantId}&view_mode=${viewMode}`;
+        if (filterStoreId) url += `&filter_merchant_id=${filterStoreId}`;
+        if (targetDate) url += `&target_date=${targetDate}`;
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Failed to load trends");
+        return await response.json();
     }
 };

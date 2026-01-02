@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../services/api';
 import type { Merchant, Survey, Lottery, Prize } from '../types';
@@ -9,7 +10,8 @@ const generateUUID = () => crypto.randomUUID();
 export const useCustomerFlow = (
     onBackExit: () => void,
     preselectedMerchantId?: string | null,
-    preselectedSurveyId?: string | null
+    preselectedSurveyId?: string | null,
+    preselectedLotteryId?: string | null
 ) => {
     // Steps
     const [step, setStep] = useState<CustomerStep>('MERCHANT_SELECT');
@@ -32,10 +34,32 @@ export const useCustomerFlow = (
     // --- Logic ---
 
     // Load specific merchant data
-    const loadMerchantData = useCallback(async (merchant: Merchant, specificSurveyId?: string | null) => {
+    const loadMerchantData = useCallback(async (merchant: Merchant, specificSurveyId?: string | null, specificLotteryId?: string | null) => {
         setSelectedMerchant(merchant);
         setLoading(true);
         try {
+            // If direct lottery access
+            if (specificLotteryId) {
+                const lotteries = await db.getLotteries(merchant.id);
+                // Also check if there are shared lotteries from owner
+                // (Currently getLotteries usually handles hierarchy on backend, but ensuring we find it)
+                const targetLottery = lotteries.find(l => l.id === specificLotteryId);
+
+                if (targetLottery) {
+                    setLinkedLottery(targetLottery);
+
+                    // Since we are skipping the survey/backend submission, we must determine the prize here client-side
+                    // to ensure the wheel knows where to stop.
+                    const prize = calculatePrizeClientSide(targetLottery);
+                    setWonPrize(prize);
+
+                    setStep('LOTTERY');
+                    return; // Stop further survey loading
+                } else {
+                    alert("Lottery not found.");
+                }
+            }
+
             const surveys = await db.getSurveys(merchant.id);
             setMerchantSurveys(surveys);
 
@@ -63,11 +87,27 @@ export const useCustomerFlow = (
             }
         } catch (e) {
             console.error(e);
-            alert("Failed to load surveys.");
+            alert("Failed to load data.");
         } finally {
             setLoading(false);
         }
     }, []);
+
+    // Helper: Client-side weighted random for Direct Lottery Access
+    const calculatePrizeClientSide = (lottery: Lottery): Prize | null => {
+        if (!lottery.prizes || lottery.prizes.length === 0) return null;
+
+        const luckyNumber = Math.random() * 100;
+        let currentProb = 0;
+
+        for (const prize of lottery.prizes) {
+            currentProb += prize.probability;
+            if (luckyNumber <= currentProb) {
+                return prize;
+            }
+        }
+        return null;
+    };
 
     // Initial Load
     useEffect(() => {
@@ -80,7 +120,7 @@ export const useCustomerFlow = (
                 if (preselectedMerchantId) {
                     const matched = list.find(m => m.id === preselectedMerchantId);
                     if (matched) {
-                        await loadMerchantData(matched, preselectedSurveyId);
+                        await loadMerchantData(matched, preselectedSurveyId, preselectedLotteryId);
                     }
                 }
             } catch (e) {
@@ -90,7 +130,7 @@ export const useCustomerFlow = (
             }
         };
         init();
-    }, [preselectedMerchantId, preselectedSurveyId, loadMerchantData]);
+    }, [preselectedMerchantId, preselectedSurveyId, preselectedLotteryId, loadMerchantData]);
 
     // Handlers
     const handleMerchantSelect = (m: Merchant) => loadMerchantData(m);
@@ -145,6 +185,7 @@ export const useCustomerFlow = (
     const handleBack = () => {
         if (step === 'SURVEY') setStep('MERCHANT_SELECT'); // Simplified back nav
         else if (step === 'SURVEY_SELECT') setStep('MERCHANT_SELECT');
+        else if (step === 'LOTTERY' && preselectedLotteryId) onBackExit(); // Exit if directly linked
         else onBackExit();
     };
 

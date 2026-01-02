@@ -1,5 +1,6 @@
+
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
 
@@ -106,3 +107,34 @@ class LotteryResult(BaseModel):
     won: bool
     prize: Optional[Prize]
     message: str
+
+# --- 7. 数据看板 (Dashboard) ---
+class TodayStats(BaseModel):
+    today_count: int
+    yesterday_count: int
+    diff: int
+    growth_pct: float
+
+class DashboardStats(BaseModel):
+    total_restaurants: int
+    total_surveys: int
+    total_responses: int
+    total_owners: Optional[int] = None # Admin only
+    today_data: Optional[TodayStats] = None
+
+class ChartPoint(BaseModel):
+    label: str # Date string or Month string
+    value: int
+    full_date: Optional[str] = None # For tooltip
+
+class GrowthStats(BaseModel):
+    today_count: int
+    yesterday_count: int
+    daily_growth_pct: float
+    month_count: int
+    last_month_count: int
+    monthly_growth_pct: float
+
+class DashboardTrends(BaseModel):
+    stats: GrowthStats
+    chart_data: List[ChartPoint]
